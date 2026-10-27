@@ -1,0 +1,83 @@
+{
+  "_id": "67f5bb06b8e3712b3da49bfc",
+  "id": "facebook/UMA",
+  "private": false,
+  "tags": [
+    "arxiv:2506.23971",
+    "license:other",
+    "region:us"
+  ],
+  "downloads": 122,
+  "likes": 534,
+  "modelId": "facebook/UMA",
+  "author": "facebook",
+  "sha": "c5107e43d5e811dd7cb56f57533dc0eb550dee6b",
+  "lastModified": "2026-10-21T17:48:16.000Z",
+  "gated": "manual",
+  "disabled": false,
+  "model-index": null,
+  "config": {},
+  "cardData": {
+    "license": "other",
+    "extra_gated_prompt": "Please be sure to provide your full legal name, date of birth, and full organization name with all corporate identifiers. Avoid the use of acronyms and special characters. Failure to follow these instructions may prevent you from accessing this model and others on Hugging Face. You will not have the ability to edit this form after submission, so please ensure all information is accurate.\n### FAIR Chemistry License v1 Last Updated: May 14, 2025\n\u201cAcceptable Use Policy\u201d means the FAIR Chemistry Acceptable Use Policy that is incorporated into this Agreement.\n\u201cAgreement\u201d means the terms and conditions for use, reproduction, distribution and modification of the Materials set forth herein.\n\n\u201cDocumentation\u201d means the specifications, manuals and documentation accompanying  Materials distributed by Meta.\n\n\u201cLicensee\u201d or \u201cyou\u201d means you, or your employer or any other person or entity (if you are entering into this Agreement on such person or entity\u2019s behalf), of the age required under applicable laws, rules or regulations to provide legal consent and that has legal authority to bind your employer or such other person or entity if you are entering in this Agreement on their behalf.\n\n\u201cMeta\u201d or \u201cwe\u201d means Meta Platforms Ireland Limited (if you are located in or, if you are an entity, your principal place of business is in the EEA or Switzerland) and Meta Platforms, Inc. (if you are located outside of the EEA or Switzerland).\n\u201cMaterials\u201d means, collectively, Documentation and the models, software and algorithms, including machine-learning model code, trained model weights, inference-enabling code, training-enabling code, fine-tuning enabling code, demonstration materials and other elements of the foregoing distributed by Meta and made available under this Agreement.\nBy clicking \u201cI Accept\u201d below or by using or distributing any portion or element of the Materials, you agree to be bound by this Agreement.\n\n1. License Rights and Redistribution.\n\na. Grant of Rights. You are granted a non-exclusive, worldwide, non-transferable, and royalty-free limited license under Meta\u2019s intellectual property or other rights owned by Meta embodied in the Materials to use, reproduce, distribute, copy, create derivative works of, and make modifications to the Materials.  \n \nb. Redistribution and Use.  \n\ni. Distribution of Materials, and any derivative works thereof, are subject to the terms of this Agreement. If you distribute or make the Materials, or any derivative works thereof, available to a third party, you may only do so under the terms of this Agreement. You shall also provide a copy of this Agreement to such third party.\n\nii.  If you submit for publication the results of research you perform on, using, or otherwise in connection with Materials, you must acknowledge the use of Materials in your publication.\n\niii. Your use of the Materials must comply with applicable laws and regulations (including Trade Control Laws) and adhere to the FAIR Chemistry Acceptable Use Policy, which is hereby incorporated by reference into this Agreement. 2. User Support. Your use of the Materials is done at your own discretion; Meta does not process any information or provide any service in relation to such use.  Meta is under no obligation to provide any support services for the Materials. Any support provided is \u201cas is\u201d, \u201cwith all faults\u201d, and without warranty of any kind.\n\n3. Disclaimer of Warranty. UNLESS REQUIRED BY APPLICABLE LAW, THE MATERIALS AND ANY OUTPUT AND RESULTS THEREFROM ARE PROVIDED ON AN \u201cAS IS\u201d BASIS, WITHOUT WARRANTIES OF ANY KIND, AND META DISCLAIMS ALL WARRANTIES OF ANY KIND, BOTH EXPRESS AND IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE. YOU ARE SOLELY RESPONSIBLE FOR DETERMINING THE APPROPRIATENESS OF USING OR REDISTRIBUTING THE Materials AND ASSUME ANY RISKS ASSOCIATED WITH YOUR USE OF THE Materials AND ANY OUTPUT AND RESULTS.\n \n4. Limitation of Liability. IN NO EVENT WILL META OR ITS AFFILIATES BE LIABLE UNDER ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, TORT, NEGLIGENCE, PRODUCTS LIABILITY, OR OTHERWISE, ARISING OUT OF THIS AGREEMENT, FOR ANY LOST PROFITS OR ANY DIRECT OR INDIRECT, SPECIAL, CONSEQUENTIAL, INCIDENTAL, EXEMPLARY OR PUNITIVE DAMAGES, EVEN IF META OR ITS AFFILIATES HAVE BEEN ADVISED OF THE POSSIBILITY OF ANY OF THE FOREGOING.\n \n5. Intellectual Property.\n\na. Subject to Meta\u2019s ownership of Materials and derivatives made by or for Meta, with respect to any derivative works and modifications of the Materials that are made by you, as between you and Meta, you are and will be the owner of such derivative works and modifications.\n \nb. If you institute litigation or other proceedings against Meta or any entity (including a cross-claim or counterclaim in a lawsuit) alleging that the Materials, outputs or results, or any portion of any of the foregoing, constitutes infringement of intellectual property or other rights owned or licensable by you, then any licenses granted to you under this Agreement shall terminate as of the date such litigation or claim is filed or instituted. You will indemnify and hold harmless Meta from and against any claim by any third party arising out of or related to your use or distribution of the Materials.\n \n6. Term and Termination. The term of this Agreement will commence upon your acceptance of this Agreement or access to the Materials and will continue in full force and effect until terminated in accordance with the terms and conditions herein. Meta may terminate this Agreement if you are in breach of any term or condition of this Agreement. Upon termination of this Agreement, you shall delete and cease use of the Materials. Sections 5, 6 and 9 shall survive the termination of this Agreement. \n \n7. Governing Law and Jurisdiction. This Agreement will be governed and construed under the laws of the State of California without regard to choice of law principles, and the UN Convention on Contracts for the International Sale of Goods does not apply to this Agreement. The courts of California shall have exclusive jurisdiction of any dispute arising out of this Agreement. \n\n8. Modifications and Amendments. Meta may modify this Agreement from time to time; provided that they are similar in spirit to the current version of the Agreement, but may differ in detail to address new problems or concerns. All such changes will be effective immediately. Your continued use of the Materials after any modification to this Agreement constitutes your agreement to such modification. Except as provided in this Agreement, no modification or addition to any provision of this Agreement will be binding unless it is in writing and signed by an authorized representative of both you and Meta.\n\nFAIR Chemistry Acceptable Use Policy \nThe Fundamental AI Research (FAIR) team at Meta seeks to further understanding of new and existing research domains with the mission of advancing the state-of-the-art in artificial intelligence through open research for the benefit of all.  Meta is committed to promoting the safe and responsible use of such Materials.  \nProhibited Uses\nYou agree you will not use, or allow others to use, Materials to:\n\n Violate the law or others\u2019 rights, including to:\nEngage in, promote, generate, contribute to, encourage, plan, incite, or further illegal or unlawful activity or content, such as: Violence or terrorism Exploitation or harm to children, including the solicitation, creation, acquisition, or dissemination of child exploitative content or failure to report Child Sexual Abuse Material Human trafficking, exploitation, and sexual violence The illegal distribution of information or materials to minors, including obscene materials, or failure to employ legally required age-gating in connection with such information or materials. Sexual solicitation Any other criminal activity\nEngage in, promote, incite, or facilitate the harassment, abuse, threatening, or bullying of individuals or groups of individuals\nEngage in, promote, incite, or facilitate discrimination or other unlawful or harmful conduct in the provision of employment, employment benefits, credit, housing, other economic benefits, or other essential goods and services\nEngage in the unauthorized or unlicensed practice of any profession including, but not limited to, financial, legal, medical/health, or related professional practices\nCollect, process, disclose, generate, or infer health, demographic, or other sensitive personal or private information about individuals without rights and consents required by applicable laws\nEngage in or facilitate any action or generate any content that infringes, misappropriates, or otherwise violates any third-party rights, including the outputs or results of any technology using Materials.\nCreate, generate, or facilitate the creation of malicious code, malware, computer viruses or do anything else that could disable, overburden, interfere with or impair the proper working, integrity, operation or appearance of a website or computer system\n2. Engage in, promote, incite, facilitate, or assist in the planning or development of activities that present a risk of death or bodily harm to individuals, including use of Materials related to the following:\nMilitary, warfare, nuclear industries or applications, espionage, use for materials or activities that are subject to the International Traffic Arms Regulations (ITAR) maintained by the United States Department of State\nGuns and illegal weapons (including weapon development)\nIllegal drugs and regulated/controlled substances\nOperation of critical infrastructure, transportation technologies, or heavy machinery\nSelf-harm or harm to others, including suicide, cutting, and eating disorders\nAny content intended to incite or promote violence, abuse, or any infliction of bodily harm to an individual\n3. Intentionally deceive or mislead others, including use of FAIR Materials related to the following:\n\n Generating, promoting, or furthering fraud or the creation or promotion of disinformation\n\n Generating, promoting, or furthering defamatory content, including the creation of defamatory statements, images, or other content\n\nGenerating, promoting, or further distributing spam\n\n Impersonating another individual without consent, authorization, or legal right\n\nRepresenting that outputs of FAIR Materials or outputs from technology using FAIR Materials are human-generated\nGenerating or facilitating false online engagement, including fake reviews and other means of fake online engagement\n4. Fail to appropriately disclose to end users any known dangers of your Materials.\nPlease report any violation of this Policy or other problems that could lead to a violation of this Policy by emailing us at fairchemistry@meta.com.",
+    "extra_gated_fields": {
+      "First Name": "text",
+      "Last Name": "text",
+      "Date of birth": "date_picker",
+      "Country": "country",
+      "Affiliation": "text",
+      "I accept the terms and conditions": "checkbox",
+      "geo": "ip_location"
+    }
+  },
+  "siblings": [
+    {
+      "rfilename": ".gitattributes"
+    },
+    {
+      "rfilename": "LICENSE"
+    },
+    {
+      "rfilename": "README.md"
+    },
+    {
+      "rfilename": "USE_POLICY.md"
+    },
+    {
+      "rfilename": "checkpoints/uma-m-1p1.pt"
+    },
+    {
+      "rfilename": "checkpoints/uma-s-1.pt"
+    },
+    {
+      "rfilename": "checkpoints/uma-s-1p1.pt"
+    },
+    {
+      "rfilename": "checkpoints/uma-s-1p2.pt"
+    },
+    {
+      "rfilename": "checkpoints/uma-s-1p2p1-ft-d4rev.pt"
+    },
+    {
+      "rfilename": "checkpoints/uma-s-1p2p1-ft-r2scan.pt"
+    },
+    {
+      "rfilename": "checkpoints/uma-s-1p2p1.pt"
+    },
+    {
+      "rfilename": "config.json"
+    },
+    {
+      "rfilename": "references/form_elem_refs.yaml"
+    },
+    {
+      "rfilename": "references/iso_atom_elem_refs.yaml"
+    }
+  ],
+  "spaces": [
+    "facebook/fairchem_uma_demo",
+    "yushg/densitygen-ald"
+  ],
+  "createdAt": "2025-04-09T00:10:46.000Z",
+  "usedStorage": 46371748740
+}

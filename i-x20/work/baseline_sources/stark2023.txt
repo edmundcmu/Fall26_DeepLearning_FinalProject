@@ -1,0 +1,2083 @@
+Machine Learning Interatomic Potentials for Reactive Hydrogen Dynamics at Metal
+Surfaces Based on Iterative Refinement of Reaction Probabilities
+Wojciech G. Stark, 1 Julia Westermayr,1, 2 Oscar A. Douglas-Gallardo, 1, 3
+James Gardner, 1 Scott Habershon, 1 and Reinhard J. Maurer 1, 4, ∗
+1Department of Chemistry, University of Warwick,
+Gibbet Hill Road, Coventry CV4 7AL, United Kingdom
+2Present address: Wilhelm Ostwald Institute for Physical and
+Theoretical Chemistry, University of Leipzig, Leipzig 04103, Germany
+3Present address: Instituto de Ciencias Qu´ ımicas, Facultad de Ciencias,
+Universidad Austral de Chile, Isla Teja, Valdivia 5090000, Chile
+4Department of Physics, University of Warwick,
+Gibbet Hill Road, Coventry CV4 7AL, United Kingdom
+ABSTRACT
+Reactive chemistry of molecular hydrogen at surfaces, notably dissociative sticking and hydro-
+gen evolution, plays a crucial role in energy storage and fuel cells. Theoretical studies can help to
+decipher underlying mechanisms and reaction design, but studying dynamics at surfaces is compu-
+tationally challenging due to the complex electronic structure at interfaces and the high sensitivity
+of dynamics to reaction barriers. In addition, ab initio molecular dynamics, based on density func-
+tional theory, is too computationally demanding to accurately predict reactive sticking or desorption
+probabilities as it requires averaging over tens of thousands of initial conditions. High-dimensional
+machine learning-based interatomic potentials are starting to be more commonly used in gas-surface
+dynamics, yet, robust approaches to generate reliable training data and to assess how model un-
+certainty affects the prediction of dynamic observables are not well established. Here, we employ
+ensemble learning to adaptively generate training data while assessing model performance with full
+uncertainty quantification for reaction probabilities of hydrogen scattering on different copper facets.
+We use this approach to investigate the performance of two message-passing neural networks, SchNet
+and PaiNN. Ensemble-based uncertainty quantification and iterative refinement allow us to expose
+the shortcomings of the invariant pairwise-distance-based feature representation in the SchNet model
+for gas-surface dynamics.
+I. INTRODUCTION
+Hydrogen evolution reaction on metal surfaces is a pro-
+cess with a great variety of practical applications, includ-
+ing energy storage, fuel cells [1], or corrosion of spent
+nuclear fuel [2]. Reactive hydrogen chemistry at surfaces
+plays an important role in key heterogeneous catalysis
+processes [3] such as the Haber-Bosch process [4, 5] or
+methanol synthesis [6–8]. Copper is a particularly inter-
+esting metal to study in this context due to its widespread
+use as a catalyst in many chemical reactions. Conse-
+quently, the dissociation of hydrogen on Cu surfaces has
+become a benchmark problem for experimental [9–17]
+and theoretical [18–34] research.
+Ab initio molecular dynamics (AIMD) simulations uti-
+lize electronic structure methods, typically through den-
+sity functional theory (DFT). Simulating molecules using
+on-the-fly AIMD methods is typically feasible only for
+short-time scales, usually in the range of a few picosec-
+onds, small systems, in the range of a few dozen atoms
+at most, and few trajectories. Furthermore, simulating
+the reactive dynamics of molecules at metal surfaces is
+∗ r.maurer@warwick.ac.uk
+exceptionally challenging due to the complex electronic
+structure of metallic surfaces and the high dimensional-
+ity of the system involving adsorbate and substrate dy-
+namics. Most quantities of interest in gas-surface dy-
+namics, such as the probability of dissociative sticking
+or recombinative desorption, require a high sensitivity
+towards barriers and energy landscape corrugation. Fi-
+nally, to compare theoretical calculations with experi-
+mental results, ensemble averaging over large numbers
+of trajectories is often necessary. This makes AIMD un-
+feasible if converged macroscopic experimental observ-
+ables are to be simulated. Therefore, to satisfy these
+requirements, analytical surrogate models of the poten-
+tial energy surfaces (PESs) are typically employed. Var-
+ious techniques were used in the past to model the dis-
+sociative chemisorption of H 2 at metal surfaces [35, 36],
+such as potentials based on the corrugation-reducing pro-
+cedure (CRP) [37, 38] for Cu(111) [19–21, 28, 32, 39],
+Cu(211) [28], Cu(100) [22], Pd(100) [40] and Ni(111) [41],
+its extension, dynamic corrugation model (DCM) [42]
+for Cu(111) [33, 43], the modified Shepard interpola-
+tion [44, 45] for Cu(111) [21] and Pt(111) [46, 47], or
+the permutation invariant polynomials (PIPs) [48, 49]
+employing neural networks (PIP-NN) [50] for Cu(111),
+Ag(111) [25, 51] and Co(0001) [52, 53]. Besides the PIP-
+NN, other machine-learning (ML)-based models were em-
+arXiv:2305.10873v5  [physics.chem-ph]  16 Nov 2023
+2
+ployed to study hydrogen chemistry at metal surfaces
+in the past, such as the embedded atom neural network
+(EANN) [54], which was also successfully employed for
+modeling dissociative chemisorption at multiple Cu sur-
+faces [29]. Although these methods have proven to be
+robust and accurate, most of them have clear limita-
+tions. For example, the CRP has not yet been applied be-
+yond the gas-surface dynamics of homonuclear diatomic
+molecules. Additionally, CRP models have reduced di-
+mensionality, typically including only the degrees of free-
+dom of the molecule on frozen surfaces. While approxi-
+mate approaches to include phonon and temperature ef-
+fects have been proposed [22, 31–33, 55, 56], the accu-
+racy and efficiency of these approximations have to be
+verified for each system. The modified Shepard inter-
+polation method was found to have symmetry-related
+issues, which have been addressed in a H 2/Pd(111)
+study [57]. The potentials based on this method are
+restricted to low-dimensional systems and exclude sur-
+face degrees of freedom. PIP-NN is capable of represent-
+ing high-dimensional systems accurately, however, this
+comes with unfavorable computational scaling with the
+number of atoms in the system, due to a large number of
+required PIPs. Even with recent improvements [58], PIP-
+NNs cannot be easily extended to consider all degrees of
+freedom for extended surfaces.
+Recently, for modeling PESs, attention has shifted to
+ML-based interatomic potentials (MLIPs), due to their
+simplicity, flexibility, accuracy, and ability to model all
+degrees of freedom [59–61]. Many approaches to MLIPs
+have appeared in recent years, with neural networks
+(NNs) being one of the most prominent. Behler and Par-
+rinello introduced high dimensional NNs [62], an atom-
+istic approach to NNs, in which atomic energies are
+learned, to be finally summed up to approximate the PES
+of the system. One of the biggest challenges in creat-
+ing MLIPs is the representation of atomic environments
+in the system, which has been the subject of extensive
+studies within the ML community in recent years [63–
+65]. Atomic feature representations should capture the
+dependence of the atomic energy with respect to the en-
+vironment. They typically achieve this by expanding
+the atomic neighborhood into a functional dependence
+of two-body (distances), three-body (angles), and higher-
+order terms. Furthermore, atomic features should ensure
+invariance of the PES with respect to geometric symme-
+tries, such as rigid rotation, inversion, and translation –
+symmetry operations that comprise the Euclidean group
+E(3). The most commonly employed symmetry-invariant
+descriptors include atom-centered symmetry functions
+(ACSFs) [66] and smooth overlap of atomic positions
+(SOAP) [67], but many other approaches have been de-
+veloped [68, 69]. Recently, the importance of symmetry
+equivariance in atom-centered features was concurrently
+acknowledged by several research groups. This means
+that descriptors are able to describe the transformation
+properties of vectorial and tensorial features (e.g. atomic
+force vectors) with respect to rigid rotations and sym-
+metry transformations in the atomic environment. To-
+gether with the emergence of message-passing neural net-
+works (MPNNs), which consider molecules and materi-
+als as graphs and directly learn atom-centered descrip-
+tors, [70, 71] this has given rise to several new deep-
+learning-based MLIP architectures [72–78]. These new
+approaches provide a more complete representation of the
+atomic environments with respect to geometric changes
+and have shown to be more data efficient and accurate
+in learning MLIPs based on consistent sets of energies
+and forces for a variety of molecular and bulk materials
+systems [72, 73, 78]. A commonly employed MLIP archi-
+tecture in gas-surface dynamics is EANN [54], which em-
+ploys 2-body and 3-body terms to represent the atomic
+environment but currently does not implement feature
+equivariance. Nevertheless, it is able to achieve highly
+accurate and efficient model representations. The rel-
+evance of feature equivariance for gas-surface dynamics
+simulations has not yet been assessed in detail. One of
+the biggest difficulties in developing MLIPs is the cre-
+ation of a structurally diverse, meaningful, yet efficient,
+and sparse data set that will enable the creation of re-
+liable models. Adaptive sampling and active learning
+techniques [79–86], based on an iterative search for high-
+error structures, has become a state of the art method
+in computational materials research. Despite the suc-
+cess of these techniques, model errors are typically mea-
+sured on test data sets. Performance measures focused
+on dynamic observables and simulation results provide
+for more reliable validation.
+The probability of dissociative sticking of hydrogen or
+recombinative desorption crucially depends on the bar-
+rier for dissociation or recombination, respectively. In
+addition to the necessity of accurate and robust MLIPs,
+identifying a reliable approximation to DFT can be chal-
+lenging. Initially, the works that investigated hydrogen
+dynamics at Cu surfaces employed generalized gradient
+approximation functionals such as PW91 or RPBE [18,
+19, 21]. However, it was observed that RPBE underes-
+timates and PW91 overestimates reaction probabilities
+for H 2 dissociation at Cu(111) surfaces [20]. In order
+to address this issue for hydrogen surface chemistry, the
+specific reaction parameter (SRP) functional [87] was de-
+veloped and applied in many studies of dissociation at the
+Cu(111) surface [20, 26, 27, 32, 33, 43, 56]. The SRP48
+functional employed in most of those studies, has been
+additionally proven to be transferable to other surfaces
+beyond Cu(111), such as Cu(100) [22, 88] or Ag(111) [89].
+It was also successfully applied to stepped surfaces [90],
+including H2/Cu(211) systems [26, 28, 31, 91]. Another,
+more recently introduced functional, that also shows
+good agreement with experiments, is optPBE-vdW [92].
+This functional additionally includes long-range van der
+Waals interactions and was employed for H 2/Cu(111)
+and Cu(100) systems where it was shown to give predic-
+tions for reactive sticking probabilities that are compa-
+rable to SRP48. [93]. The optPBE-vdW functional was
+also utilized in the unified EANN-based model for H 2
+3
+dynamics at multiple facets of copper recently developed
+by Zhu et al. , giving an excellent agreement with exper-
+iments for all of the modeled surfaces [29]. In this work,
+we will use the SRP48 functional due to its prior suc-
+cessful application for various properties beyond sticking
+probabilities [27, 28, 43, 91].
+In this paper, we perform adaptive data generation
+with uncertainty quantification (UQ) to construct MLIPs
+based on message-passing for the simulation of reactive
+scattering of molecular hydrogen on copper. Because of
+the impact the surface termination of the catalyst has on
+the chemical reactivity, we include multiple copper facets
+in our model. By directly targeting dynamic observables
+and by providing UQ throughout the training process,
+we are able to assess the accuracy and data efficiency of
+MLIPs with or without equivariant features for two sim-
+ilar architectures, namely the SchNet model [71, 94, 95]
+and its equivariant successor, the polarizable atom in-
+teraction NN (PaiNN) [72]. We present our workflow
+for adaptive sampling driven by the direct simulation of
+sticking probabilities at various incidence energies and
+vibrational initial states of the molecule. While the in-
+variant SchNet model requires many adaptive sampling
+iterations to converge to a smooth and accurate PES,
+PaiNN achieves similar or better accuracy already after
+one adaptive sampling iteration, providing evidence of
+the shortcomings of the SchNet model for this application
+area. SchNet-based MLIPs converge only very slowly to
+smooth PESs that yield reaction probabilities that agree
+with reference results, whereas PaiNN provides robust
+and accurate simulated results with only a fraction of the
+training data. We can trace these results back to the dif-
+ficulty of constructing smooth PESs with SchNet, which
+directly affects the simulated reaction probabilities. By
+employing larger unit cells than in previously reported
+models for this system, we are able to describe the low
+coverage limit and enable a straightforward extension to
+study phenomena beyond sticking, such as recombinative
+desorption.
+II. METHODS
+A. Message-passing-NN-based interatomic
+potentials
+In message-passing NNs (MPNNs), each atom (node)
+is connected with edges to all neighboring atoms within
+a specified cutoff distance, to create graphs embedded in
+3-dimensional Euclidean space. The MPNN graph lay-
+out enables the passing of information between atoms
+through a series of message passing-update steps, creat-
+ing a representation that indirectly carries details about
+atoms from outside of the cutoff distance and has the
+ability to encode many-body interactions. This process
+can be described as
+mt+1
+i =
+X
+j∈N (i)
+Mt(st
+i, st
+j, ⃗ eij), (1)
+Cu(111)
+Cu(211)
+Cu(110)Cu(100)
+x
+y
+FIG. 1. Top-view of the Cu(111), Cu(100), Cu(110)
+and Cu(211) surfaces. Unit cells used in the work are
+highlighted with darker colors.
+st+1
+i = Ut(st
+i, mt+1
+i ), (2)
+where mt+1
+i is a message created by summing over the
+scalar atomic features s of nodes (atoms) i, j at step t,
+connected by edge features ⃗ e(e.g. relative positions of
+nodes ⃗ eij = ⃗ ej − ⃗ ei). Mt and Ut are nonlinear message
+and update functions, respectively [70].
+Recently, equivariant (vectorial) features embedded in
+MPNNs proved to provide significant improvement in the
+data efficiency and accuracy of the models [72, 73, 75, 96].
+To include such features in the message passing scheme,
+the message in Eq. 3 is adapted to
+⃗mt+1
+i =
+X
+j∈N (i)
+⃗Mt(st
+i, st
+j, ⃗vt
+i, ⃗vt
+j, ⃗ eij), (3)
+where vectorial representations ⃗v are additionally in-
+cluded. Sch¨ utt and co-workers developed a family of
+MPNNs, in particular, SchNet [94] and PaiNN [72], which
+differ mainly by the inclusion of equivariant features in
+the latter. While SchNet starts from a feature embedding
+based on interatomic distances, PaiNN additionally prop-
+agates vectorial features. This differs from other MLIPs
+based on predefined distance and angle features, employ-
+ing e.g. ACSF or SOAP descriptors. We are using these
+models here as the architectures are very similar, allow-
+ing us to study how the inclusion of equivariance affects
+model performance and simulation accuracy.
+B. Training data
+Our MLIP is aimed at describing scattering on typ-
+ical surface facets of crystalline copper. We included
+four Cu facets in our data set, namely Cu(111), (100),
+(110), and (211). In our data set we used 3 ×3, 6-layered
+slabs for Cu(111), (100) and (110) surfaces and 1 ×3, 6-
+layered slabs for Cu(211) surface (Fig. 1). Our initial
+data set included 2530 data points. 845 data points rep-
+resent H 2 interacting with one of the four Cu surfaces
+(56 atoms) and 1685 data points represent Cu surface
+structures sampled at different temperatures (54 atoms).
+The final data set, after adaptive sampling (see below),
+contained 4230 data points (2545 H 2/Cu and 1685 clean
+Cu surface structures). The final number of data points
+in our training data set is higher than the data set used
+4
+by Zhu et al. [29], which was generated based on subsam-
+pling of data from many on-the-fly ab-initio MD trajecto-
+ries. Our training data set generated with multiple steps
+of adaptive learning is densely sampled and likely could
+be sparsified without noticeable loss of information.
+The initial data set was created with data points col-
+lected from two different sources. The first source con-
+sisted of data points sampled from AIMD simulations of
+hydrogen atoms adsorbed at each surface at 300 K and
+from AIMD simulations of clean surface dynamics (with-
+out adatoms) at three different temperatures: 300, 600,
+and 900 K. In these calculations, only the two bottom
+layers of copper were fixed. The second set of data points
+was taken from MD simulations of H 2 scattering on 2×2
+fixed Cu surfaces, including (111), (110), and (100) facets
+with 4 layers. No H 2 scattering data was included for
+Cu(211) in our initial data set and thus the barrier of
+H2/Cu(211) dissociative adsorption is not explored di-
+rectly during training of the initial models. The initial
+MD simulations were performed with a SchNet MLIP
+with standard settings trained on the data set generated
+and kindly provided by Jiang and co-workers [29]. The
+metal slabs from the data points generated in the sim-
+ulations were then transcribed into 6-layered 3 ×3 slabs
+and both energies and forces were calculated with DFT.
+We have chosen to describe the system with a minimum
+of 6 metal layers and larger unit cells which may be
+crucial to ensure convergence with respect to electron-
+phonon response [97] as recently pointed out by Box
+et al. [98]. Such effects may be significant for the simu-
+lation of e.g. state-to-state scattering probabilities. [27]
+Furthermore, including the larger unit cell will be ben-
+eficial to future-proof the data set for the study of on-
+surface and subsurface chemistry of hydrogen. Addition-
+ally, we added several structures with hydrogen molecules
+far away from the surface (around 10 ˚A above the sur-
+face), where the metal-H interaction is negligible. These
+structures only differ by the distance between H atoms,
+to ensure a robust description of the H-H bond in the
+gas phase. The exception was the H 2/Cu(211) system,
+for which the initial data set contained only structures
+sampled from AIMD of hydrogen atoms placed on the
+surface (adsorbed) and several data points with a hydro-
+gen molecule placed high above the surface with different
+bond lengths.
+For DFT calculations we employed the SRP exchange-
+correlation functional [99] containing 52% of PBE [100]
+and 48% of RPBE functional [101] (SRP48) with a k
+grid of 12 ×12×1 (applies to all Cu facets used in our
+study). All DFT calculations were performed with the
+all-electron numeric atomic orbital code FHI-aims [102]
+using a “tight” default basis set and the following SCF
+convergence criteria: tolerances of 10 −6 eV, 10 −3 eV,
+10−5 e/a03 and 10 −4 eV/˚A for the total energy, the
+eigenvalue energies, the charge density, and the forces,
+respectively. Minimum energy paths were obtained with
+climbing image nudged elastic band [103] calculations.
+We used 7, 20, and 50 images with DFT, SchNet, and
+FIG. 2. Schematic representation of the iterative
+adaptive sampling procedure. The initial set of DFT data
+points is used to train the first set of models. We directly per-
+form gas-surface scattering dynamics to assess the validity of
+the potential and to select new data points for which further
+DFT calculations are performed and new models are trained.
+This process is iteratively repeated until the target dynamic
+observables are converged.
+PaiNN codes respectively, and maximum force along the
+path of 0.01 eV/ ˚A.
+C. Adaptive sampling and uncertainty
+quantification strategy
+To improve the initial data set we employed an adap-
+tive sampling procedure as shown in Fig. 2. This ap-
+proach allows iterative improvement of the models by
+finding areas in phase space for which the current data
+points do not sufficiently constrain the model potential.
+To find badly represented structures, at every fifth step
+of the MD simulation, we evaluate the potential using 3
+models trained with different train/test splits and option-
+ally different energy/force weights for the loss function.
+This is a form of bootstrapping ensemble learning, which
+enables us to calculate the standard deviation between
+the potential predictions and select structures for which
+the standard deviation exceeds a chosen maximum er-
+ror value. In such cases, models disagree and the data
+5
+point is likely outside of the distribution covered by the
+training data. The same uncertainty estimates are later
+used to evaluate epistemic errors on the dynamic reaction
+probabilities in section III. The maximum error values
+were selected manually after analyzing standard devia-
+tion trends across the trajectories and their values were
+0.03 eV for the first three adaptive sampling iterations
+and 0.025 eV for the last iterations.
+For the chosen structures we calculate the associated
+DFT-level energies and forces. The new data points are
+then added to the existing data set. After having col-
+lected a full set of high-error structures for every Cu sur-
+face from reactive scattering MD simulations (see below),
+the data set is analyzed using k-means clustering. At ev-
+ery iteration of adaptive sampling, we generated between
+100-200 clusters for every surface. The data points clos-
+est to the centers of the clusters were then added to a
+data set that contained all data points generated dur-
+ing this adaptive sampling step. This ensures that the
+smallest number of data points with the most amount of
+new information is added. For the k-means clustering, we
+used simple but informative descriptors, such as the in-
+verse distances between hydrogen atoms and the inverse
+distances between every hydrogen atom and the surface,
+which we reduced into a 2-dimensional problem employ-
+ing principal component analysis. The data set received
+after sampling all high-error points was then manually
+inspected to exclude obviously non-physical data points,
+which accounted for roughly 0-10% of all sampled data
+points. The non-physical structures were mostly found
+within data points from MD simulation steps that in-
+cluded the Cu(110) surface. The number of such struc-
+tures decreased with every iteration of adaptive sampling.
+In a single adaptive sampling step, the resulting data
+set included between 300-600 new data points depending
+mainly on the number of data points excluded during the
+last stage of data processing. The Python-based scikit-
+learn [104] package was employed for the dimensional-
+ity reduction and the clustering of the data points. All
+scripts and definitions related to the analysis and clus-
+tering process are provided (see Data Availability).
+For the purpose of adaptive sampling, in each iteration,
+we perform a full set of reactive scattering simulations
+for initial vibrational and rotational state distributions
+for states (ν=0, J=0) (iterations 1 to 4) and ( ν=1, J=1)
+(iterations 3 to 4) of H 2 on all surface facets calculated
+at 6 different collision energies between 0.2 and 0.85 eV.
+The simulated sticking probabilities yield a metric for
+the convergence that is a dynamic observable which is
+directly comparable to experimental data and other com-
+putational studies. SchNet was used for all simulations
+regarding adaptive sampling, which ensured consistency
+with respect to data generation.
+Independently, we assess the performance of the
+MLIPs against test data with two types of errors, root-
+mean-square error (RMSE) and mean absolute error
+(MAE). Energy RMSE and MAE measures mentioned
+in the following sections relate to the total energy of all
+atoms in our system, as opposed to the errors in energy
+per atom.
+D. Molecular dynamics simulations
+All molecular dynamics simulations, including prepa-
+ration of initial conditions, were performed using the
+open-source NQCDynamics.jl package [105] ( https://
+github.com/NQCD/NQCDynamics.jl), written in the Ju-
+lia programming language. AIMD simulations for the
+initial training data set were performed using FHI-
+aims [102].
+To allow adaptive sampling, an interface was created
+within the NQCDynamics.jl code that allows calculat-
+ing the standard deviation between energies obtained by
+separate MLIP models at every other step of the sim-
+ulation (any step can be set). The package includes
+multiple methods and settings for creating initial condi-
+tions (e.g. Einstein-Brillouin-Keller, thermal Metropolis-
+Hastings Monte Carlo, and Langevin dynamics), provid-
+ing an all-in-one environment for simulating dynamics in
+the condensed phase.
+The MD simulations of hydrogen scattering are ini-
+tiated with the hydrogen molecule placed 7 ˚A above
+the surface and initial rovibrational states of H 2 are
+generated using the Einstein-Brillouin-Keller (EBK)
+method [106] for several normal incidence energies with
+randomly chosen polar and azimuthal angles. The maxi-
+mal simulation time of every scattering trajectory was set
+to 3 ps with a time step of 0.1 fs. Trajectories were ter-
+minated when special conditions were met, namely when
+the distance between the hydrogen atoms exceeds 2.25 ˚A
+(trajectory counted as dissociative chemisorption event)
+or the average distance between the hydrogen molecule
+and the top surface atoms is above 7.1 ˚A (trajectory
+counted as scattering event). Sticking probabilities were
+calculated using data extracted from 10,000 trajectories
+for every model, surface facet, rovibrational state, and
+initial collision energy reported. All sticking probabili-
+ties are averaged values from the results received by 3
+models with different training/test data split (in total
+30,000 trajectories for every probability). All figures that
+report sticking probabilities also report epistemic model
+uncertainties as error bars, which represent the standard
+deviation between sticking probabilities predicted by 3
+different models of the same code with different random
+train/test data split. Note that we do not add statistical
+errors as they are negligible compared to the model un-
+certainty. We provide evidence of this and more details
+on the error analysis in Supplementary Figure S1.
+The simulations that included surfaces at 0 K were
+initiated using positions of the DFT-relaxed surface
+slabs. The simulations that included surfaces at
+higher temperatures were initialized with surface posi-
+tions obtained from the surface-only thermal Metropolis-
+Hastings Monte Carlo sampling at the defined tem-
+perature and with initial hydrogen velocities based on
+6
+Maxwell-Boltzmann distribution. The thermal lattice ex-
+pansion was not explicitly considered.
+AIMD simulations of dissociated hydrogen atoms mov-
+ing on all four surfaces were initiated with a hydrogen
+molecule adsorbed on the copper surface, relaxed at the
+DFT level, and the temperature of the simulation set at
+300 K. Surface-only AIMD simulations were initiated us-
+ing DFT-level relaxed surfaces and the simulations ran at
+three different temperatures (300 K, 600 K, and 900 K).
+Temperatures for all the AIMD simulations were con-
+trolled by the Bussi-Donadio-Parrinello thermostat [107].
+All the AIMD simulations ran for 10 ps with the time step
+of 5 fs.
+E. Model training and optimization details
+The initial and the iteratively improved models,
+trained during adaptive sampling, were obtained using
+default SchNet settings, employing a relatively safe cut-
+off of 5 ˚A, a batch size of 10, and varying loss function
+weights for energy and forces. After the fourth adaptive
+sampling iteration, we performed a detailed parameter
+optimization for both, SchNet and PaiNN models, via
+k-fold cross-validation (k=5), in which we divided our
+data set into 6 random splits of the same size. Following
+that, for each set of parameters, we trained 5 models,
+each with the same test set split, but a different valida-
+tion set split. All the remaining (4) splits formed the
+training sets. The errors were then calculated from the
+predictions on validation data of the models and the best
+settings were chosen based on the average error of all 5
+models. The final sticking probabilities were calculated
+employing optimized models. As energies and forces were
+trained together, these terms entered the same loss func-
+tion. For all the final models, we used loss function
+energy and force weights of 0.05 and 0.95 respectively,
+however sticking probabilities shown in Fig. 6 were cal-
+culated using models with 0.5 and 0.5 weights for en-
+ergy and force, which we used initially for PaiNN models
+(default settings in PaiNN). However, for an even bet-
+ter comparison, we continued with the 0.05 energy and
+0.95 force weights for all the models. The difference
+in energy errors for PaiNN models with both weights
+was negligible, although, the force errors were roughly
+2 times lower for the 0.05 energy and 0.95 force weights.
+Other settings are provided in section III A. SchNet was
+accessed via SchNetPack v1.0.0 [95] ( https://github.
+com/atomistic-machine-learning/schnetpack) mas-
+ter branch and PaiNN through the same repository, but
+through the developmental (”dev”) branch, that is cur-
+rently a base for the SchNetPack v2.0 [108].
+100 1000
+Training set size
+0.01
+0.10
+1.00
+RMSE / eV (E) or eV/Å (F)
+Energy
+SchNet
+PaiNN
+100 1000
+Training set size
+Forces
+SchNet
+PaiNN
+FIG. 3. Learning curves for SchNet and PaiNN mod-
+els. Log-log plot of the test set predictive error (RMSE)
+dependence on the size of the training set for both models
+(SchNet and PaiNN) with respect to energy (left) and force
+(right) values. The error bars represent the standard devia-
+tion between the RMSEs obtained for all splits.
+III. RESULTS
+A. Model parameter optimization and learning
+behavior
+We performed an optimization of different model pa-
+rameters for both SchNet and PaiNN models indepen-
+dently, using k-fold cross-validation (k=5). Supplemen-
+tary Figure S2 shows the convergence of the number of
+features and interaction blocks (left) and cutoff distance
+(right) for both models with respect to force RMSEs in
+log scale. After analyzing the results of the optimiza-
+tion, we concluded that we will use 7 interactions, 512
+features, and a cutoff distance of 4 ˚A in the final mod-
+els for both codes. More information about the model
+parameter optimization can be found in the SI.
+To ensure proper model training, we have generated
+learning curves (shown in Fig. 3) based on energy and
+force RMSE convergence with respect to the training set
+size. Overall, the learning rates for SchNet and PaiNN
+are comparable for energies and forces, but the curves
+generated with PaiNN models are shifted, providing pre-
+diction errors 2-5 times lower across all training set sizes.
+This shift associated with the inclusion of equivariant fea-
+tures was also reported by Batzner et al. [73] and Bata-
+tia et al. [78]. Batzner et al. additionally observed a
+change in the shape of the force learning curve, caused by
+equivariant features. We do not observe this in our data.
+The energy learning rate obtained with SchNet models
+is slightly higher than with the equivariant PaiNN mod-
+els, although just by looking at the uncertainties, we can
+assume that the difference may not be statistically signif-
+icant. Even though the energy learning rate for SchNet
+might be slightly higher, the energy RMSEs of PaiNN are
+still lower for any training set sizes. We can conclude that
+the PaiNN models based on equivariant features are supe-
+7
+rior in representing the atomic environment, in particular
+for predicting equivariant quantities such as forces. The
+learning curves indicate that such models require consid-
+erably less data to achieve the same model errors than
+comparable invariant MPNN models.
+B. Adaptive sampling of reaction probabilities
+To improve the ability of the trained MLIPs to de-
+scribe the reactive scattering of H 2, we carried out adap-
+tive sampling according to the scheme in Fig. 2. The
+adaptive sampling loop was iterated 4 times until we ob-
+tained a satisfactory level of accuracy of the desired out-
+put property, namely the sticking probability as a func-
+tion of incidence energy and the initial vibrational and
+rotational state of the molecule. Fig. 4 shows the distri-
+bution of all hydrogen atom positions from all data points
+contained in the initial and final training data set (before
+and after adaptive sampling). The hydrogen atom dis-
+tribution in the final data set is noticeably more diverse,
+with hydrogen molecules exploring the entire unit cell.
+Supplementary Figure S3 furthermore shows that the dif-
+ferent adaptive sampling steps add data points across a
+wide range of H-Cu and H-H distances throughout the
+entrance channel and dissociation barrier region for all
+surfaces.
+Fig. 5 presents the simulated sticking probabilities for
+the reactive scattering of H2 molecules on a 0 K Cu(111)
+surface in the vibrational ground and first excited state
+based on different iterations of the SchNet MLIP. Er-
+ror bars correspond to model uncertainties calculated
+with ensemble learning. We compare our simulation re-
+sults to the literature data based on quasi-classical dy-
+namics (QCD) simulations with a CRP potential, re-
+ported by Smits et al. [33]. These results are based on
+the Born-Oppenheimer static surface (BOSS) approxi-
+mation, which neglects the movement of the metal sur-
+face atoms and employs the same (SRP48) functional as
+we use in this study for DFT calculations. We will ad-
+dress this model as QCD-BOSS. In order to compare our
+results meaningfully to the literature references, we sim-
+ulate scattering at initially cold metal surfaces.
+The initial training data set marked with 0 in Fig. 5
+is clearly not sufficient to capture the relevant barriers
+and features of the energy landscape to describe stick-
+ing on Cu(111), neither in terms of absolute prediction
+nor in terms of standard deviations that arise from the
+model uncertainty. The barrier for H 2 dissociation on
+Cu(111) as predicted by the SRP48 functional is 0.636 eV
+(bridge site) [39]. For collision energies below this value,
+the initial MLIP correctly predicts vanishing (ν=0, J=0)
+sticking probability, but for energies above the barrier,
+sticking is heavily underestimated. At the same time,
+the probability of dissociative chemisorption at low col-
+lision energy for the ( ν=1, J=1) state is overestimated
+compared to literature data. The former suggests that
+the barrier of the MLIP is too high, and the latter sug-
+gests that the shape of the entrance channel to the bar-
+rier is incorrect, promoting the vibrational enhancement
+of sticking.
+In the first two iterations of adaptive sampling, we ex-
+clusively included the H2 (ν=0, J=0) sticking probability
+simulations. Already at the second iteration, the sticking
+probabilities are within 20% of the literature results for
+(ν=0, J=0) state across all collision energies, whereas H2
+(ν=1, J=1) scattering in the second iteration still yields
+too much sticking at low collision energies. The third
+and fourth iterations included data sampled from the H 2
+(ν=1, J=1) runs, which then leads to a rapid conver-
+gence to the correct description of the entrance channel
+and virtually no sticking at low collision energies from
+the third iteration onwards. For both the ground and
+excited states, the third and fourth iterations provide
+qualitatively correct sticking probability curves, whereas
+the fourth iteration provided a further numerical refine-
+ment that brings the results into satisfactory agreement
+with the reference data.
+In addition to the iterative improvement of the pre-
+dictions in each iteration, we further find that the stan-
+dard deviations calculated via the ensemble of models
+are considerably reduced in the third and fourth itera-
+tions. This is an indication that the models confidently
+and consistently predict the relevant phase space as any
+random 80:10 train/test split of the data (10% held for
+validation) leads to an accurate description of the energy
+landscape.
+C. The role of equivariant features
+In the previous section, the convergence of the sticking
+probability during adaptive sampling was discussed for
+the SchNet model. We showed that four iterations of the
+adaptive sampling procedure were required to achieve a
+well-balanced and representative data set to create an ac-
+curate and robust MLIP for gas-surface scattering. We
+now investigate how the equivariant model PaiNN per-
+forms based on the exact same data. For this, we take
+the same series of initial and adaptively improved data
+sets and train a PaiNN model for each iteration. In doing
+so, we rely on the phase space explored by the adaptive
+sampling that was performed with SchNet.
+As shown in Fig. 6, even for the initial training data
+set, the sticking probabilities predicted with the PaiNN
+model closely match the literature reference values. Af-
+ter the first iteration, we achieve almost perfect agree-
+ment with the reference probabilities and further itera-
+tions only provide minimal refinement of the dynamically
+averaged simulation results. This suggests that the fail-
+ure of the initial SchNet model in the early iterations was
+not based on insufficient coverage of the phase space by
+the training data, but rather by the inability of SchNet to
+learn a reliable MLIP based on this data set. The results
+confirm our conclusions based on the learning curves (see
+Fig. 3) that the introduction of equivariant features pro-
+8
+FIG. 4. Distribution of the hydrogen atoms within the unit cell. Panels show x and y coordinates of the unit cells of
+all structures with colored circles depicting the H atom positions in the initial (top) and the final adaptively improved (bottom)
+training data sets for all 4 surfaces: Cu(111) (A, E), Cu(100) (B, F), Cu(110) (C, G), Cu(211) (D, H). The circle color indicates
+the value of height above the top layer of the respective Cu surface. Top surface atoms are schematically represented as large
+grey circles. As the positions of surface atoms are different for most of the structures, the surface atom positions are shown for
+the DFT-level relaxed surfaces.
+0.2 0.4 0.6 0.8 1.0
+Collision energy / eV
+0.0
+0.2
+0.4
+0.6
+0.8Sticking probability
+v=0
+J=0
+0 0 0 0 0 0Smits
+1 1 1 1
+1
+1
+2 2 2
+2
+2
+2
+3 3 3
+3
+3
+3
+4 4 4
+4
+4
+4
+0.2 0.4 0.6 0.8
+Collision energy / eV
+0 0
+0 0 0
+0
+1 1
+1
+1
+1
+1
+2
+2
+2
+2
+2
+2
+3
+3
+3
+3
+3
+3
+4
+4
+4
+4
+4
+4
+Smits
+v=1
+J=1
+FIG. 5. SchNet predicted sticking probabilities. Stick-
+ing probabilities have been calculated for all adaptive sam-
+pling iterations at different collision energies for H 2 scatter-
+ing on Cu(111) at 0 K with molecules prepared in the ground
+state, (ν=0, J=0) (left), and the rovibrationally excited state,
+(ν=1, J=1) (right). Each point represents an averaged value
+of sticking probability predicted using a committee of 3 mod-
+els based on different train/test splits. For each initial con-
+dition, 10,000 trajectories were used for ensemble averaging.
+Colored circles represent results calculated for different adap-
+tive sampling iterations. Numbers inside the circles refer
+to the respective iteration, with ”0” representing the initial
+model. Both figures include QCD-BOSS reference data, de-
+picted as red triangles ( △△△), reported by Smits et al. [33]
+.
+vides for much more efficient learning based on sparse
+data. If we had used the equivariant PaiNN model for
+the adaptive sampling, we would likely have reached a
+0.2 0.4 0.6 0.8 1.0
+Collision energy / eV
+0.0
+0.2
+0.4
+0.6Sticking probability
+v=0
+J=0
+0 0 0 0
+0
+0
+Smits
+1 1 1
+1
+1
+1
+2 2 2
+2
+2
+2
+3 3 3
+3
+3
+3
+4 4 4
+4
+4
+4
+FIG. 6. PaiNN predicted sticking probabilities. Stick-
+ing probabilities for all the adaptive sampling iterations at
+different collision energies for H 2 scattering on Cu(111) at
+0 K with molecules prepared in the ground state, (ν=0, J=0).
+Each point represents an averaged value of sticking probabil-
+ity predicted using a committee of 3 models based on different
+train/test splits. For each initial condition, 10,000 trajectories
+were used for ensemble averaging. Colored circles represent
+results calculated for different adaptive sampling iterations.
+Numbers inside the circles refer to the respective iteration,
+with ”0” representing the initial model. QCD-BOSS reference
+data reported by Smits et al. [33] is depicted as red triangles
+(△△△).
+converged model with only one or two iterations and
+substantially fewer data points. This is a crucial advan-
+tage as the evaluation of DFT reference data comes with
+9
+a considerable computational cost for periodic slab sys-
+tems.
+To obtain further insight into the origin of the failure
+of SchNet to capture the correct gas-surface dynamics,
+we analyzed cuts through the PESs. The traditional de-
+piction to study the relevant degrees of freedom during
+the reactive scattering of diatomic molecules on surfaces
+is the “elbow” plot, which depicts the PES contour as a
+function of the center of mass distance between molecule
+and surface and the hydrogen-hydrogen interatomic dis-
+tance. A reactive pathway is depicted as a vertical ap-
+proach to the transition state, followed by a dissociation
+of the bond. Fig. 7 depicts elbow plots for all iterations
+of the SchNet and PaiNN models for H 2 on Cu(111).
+The PES obtained with the initial SchNet model shows
+significant artifacts and discontinuities. Considering the
+model irregularities, it is surprising that we find relatively
+few instances of model failure during the dynamics. Suc-
+cessive iterations of increasing the training data set with
+relevant information remove these artifacts, but even in
+the third and fourth iterations, the PES as predicted by
+the SchNet model is far from smooth, which is surprising
+and worrying.
+In contrast, the PaiNN model, which directly trains
+vector-valued features to represent forces in the training
+data, yields smooth and well-behaved PESs already with
+the initial training data. We can see that successive iter-
+ations of the training data set mostly lead to a refinement
+of the model around the barrier region.
+The issues with the SchNet energy landscapes become
+more evident when studying the relevant barriers along
+the minimum energy paths of dissociative chemisorption
+for SchNet and PaiNN. Supplementary Figure S4 shows
+the minimum energy paths for the four surface facets pre-
+dicted by SchNet, PaiNN, and the DFT reference. In all
+cases, the energy barriers as predicted by SchNet are not
+smooth and due to the presence of artificial local min-
+ima converge slowly. However, the final reaction barrier
+values are not far from the reference results for most sur-
+faces, which explains the acceptable predictions of stick-
+ing probabilities, at least at 0 K. In the case of Cu(110),
+the barrier predicted by the SchNet model is significantly
+underestimated and the shape of the energy landscape is
+different than the shapes of the barrier generated with the
+PaiNN model and DFT. On the other hand, the barriers
+predicted by the PaiNN model are smooth and match the
+entire minimum energy paths predicted by the DFT very
+well for all the surface facets.
+D. Model error analysis
+The learning curves (Fig. 3) imply that equivariant
+PaiNN models enable much lower force errors and con-
+siderably lower energy errors than SchNet models based
+on the same training data. When we compare the energy
+and force predictions of the best final SchNet and PaiNN
+models against the DFT-based reference values (see Sup-
+TABLE 1. Averaged test RMSEs and MAEs for initial
+and final SchNet and PaiNN models. Predicted errors
+of energies (meV) and forces (meV/ ˚A) using initial and final
+SchNet and PaiNN models. Errors are listed for all systems
+and are additionally broken down into the four studied sur-
+faces: Cu(111), (100), (110), and (211). All the structures
+that include H 2 contain 56 atoms. Clean surface structures
+contain only 54 Cu atoms. The errors are averaged over 5
+models based on different random train/test sets.
+SchNet PaiNN
+Energy Forces Energy Forces
+Facet RMSE MAE RMSE MAE RMSE MAE RMSE MAE
+Initial model
+(111) 159.9 128.0 149.7 106.2 54.4 51.9 12.8 7.1
+(100) 262.9 165.1 254.7 94.6 60.6 57.5 17.7 8.7
+(110) 202.4 139.4 199.1 112.2 56.4 52.1 17.0 9.8
+(211) 334.8 251.2 329.2 148.9 62.5 56.0 13.8 9.2
+All 259.3 175.9 257.9 117.0 58.5 54.2 15.9 8.7
+Final model
+(111) 51.8 28.6 48.4 23.5 28.6 24.9 16.8 6.4
+(100) 73.5 41.6 89.7 30.9 27.8 24.9 12.9 6.8
+(110) 61.8 37.5 60.4 31.1 31.0 27.9 12.8 7.5
+(211) 72.7 51.0 58.6 36.1 29.9 26.2 11.1 7.1
+All 67.2 39.2 68.3 30.2 29.5 26.0 13.7 7.0
+plementary Figure S5), we find that both models provide
+accurate energy predictions across all four studied sur-
+face facets with few outliers. However, it is clear that
+the energy predictions by the PaiNN model are much
+more robust and consistent. The PaiNN model provides
+a three times lower MAE and a more than four times
+lower RMSE. It is clear that total energy predictions with
+SchNet are relatively accurate, but SchNet models do not
+necessarily provide smooth energy landscapes. Note that
+the reported energies are total energies over the whole
+system, so they may not be good indications of the er-
+rors associated with changes in relative energy due to the
+motion of hydrogen with respect to the copper atoms.
+The inability of SchNet to describe smooth energy
+landscapes for this data set becomes evident when study-
+ing the predicted force errors of SchNet and PaiNN (Sup-
+plementary Figure S5, panels S.c and P.c) as forces better
+capture the model accuracy for individual atomic motion.
+The SchNet force predictions show visible outliers across
+all surface facets, whereas the PaiNN predictions are in
+excellent agreement with respect to the reference values
+for both energies and forces. Both force MAEs and RM-
+SEs received for the best final models are more than 5
+times lower for equivariant PaiNN models than for the
+SchNet models, which is in line with the learning curve
+errors and rapid adaptive sampling convergence. While
+PaiNN improves upon SchNet at predicting energies, it
+is even better at predicting forces. By providing consis-
+tently accurate energy and force prediction, PaiNN has
+the ability to yield much smoother PES.
+10
+FIG. 7. Elbow plots (2d cuts through the PES) generated with different iterations of the SchNet ( S.0-4) and
+PaiNN (P.0-4) models. The initial model and adaptive sampling iterations are labeled with 0 and 1-4, respectively. The
+elbow plots were constructed by taking the transition state structure for dissociative chemisorption of H 2 on Cu(111) and
+varying the center of mass height (Z) and the molecular interatomic distance (d).
+For further analysis, we have tabulated the RMSEs
+and MAEs of SchNet and PaiNN models averaged over
+5 initial and 5 final SchNet and PaiNN models, differing
+only by training-validation-test split (Tab. 1). Across all
+surface facets, the PaiNN model based on the initial data
+set provides energy predictions that are comparable to
+the SchNet model based on the final data set and force
+predictions that are vastly superior. Surprisingly, even
+when trained on a massively improved training data set,
+the PaiNN model force error is not drastically improved
+between the final and initial model. Of course, if adaptive
+sampling had been performed with the PaiNN model,
+it might have been possible to further reduce the force
+prediction error. Nevertheless, even for the final models,
+the average errors obtained with PaiNN are significantly
+lower than the lowest errors obtained with SchNet.
+Apart from the previous conclusions about the over-
+all superiority of PaiNN over SchNet with respect to the
+errors, we can also deduce that the PaiNN models pro-
+vide an improved prediction of sparsely sampled struc-
+tures compared to SchNet models. For example, the
+H2/Cu(211) structures, for which no scattering data was
+included in our initial data set and thus a very limited
+number of data points are available (Fig. 4.D and S3), are
+predicted with high errors by the initial SchNet model.
+In contrast, the energy MAEs and RMSEs predicted by
+initial PaiNN models improve over the SchNet errors by
+more than 3 times, and the force errors improve by more
+than 13 times. Furthermore, both energy and force er-
+rors for H 2/Cu(211) generated with PaiNN models are
+comparable to the errors obtained for the other surfaces,
+which is not the case for the SchNet models. This means
+that PaiNN not only improves greatly in terms of accu-
+racy but also in terms of generalization across different
+systems (facets). As a result, it describes barriers across
+all facets very accurately. Comparing the errors obtained
+with initial and final models using SchNet, we notice the
+significant error improvement within all surfaces and the
+reduction of error prediction for H 2/Cu(211) structures
+down to the average error level upon including adaptive
+sampling data for this surface.
+E. Scattering at high surface temperature
+Having constructed accurate and robust MLIPs for the
+prediction of sticking probabilities at 0 K that are com-
+parable to previously published theoretical values, we fi-
+nally investigate how general and robust the models are
+by comparing them against experimental sticking proba-
+bilities measured for different surface facets at high tem-
+peratures. Kaufmann et al. [16] measured the sticking
+probabilities for H 2 on the Cu(111) and Cu(211) sur-
+face facets in the ground and excited rovibrational states.
+The H2 (ν=1) sticking probabilities at both surfaces were
+measured at 923 ±3 K. This provides for an interesting
+benchmark of our models as we have not trained the mod-
+els on high-temperature configurations of H 2 on Cu(111)
+or Cu(211), although we have included high-temperature
+displacements of the clean surface in the initial training
+data set.
+To confirm that our models can be employed at higher
+temperatures, we calculated sticking probabilities for H 2
+at a 925 K Cu(211) surface in a rovibrationally excited
+state ( ν=1, J=1). We compare our results to theoret-
+ical results calculated with the high-dimensional MLIP
+constructed by Zhu et al. [29] and experimental results
+by Kaufmann et al. [16] (see Fig. 8). Note that the
+11
+0.2 0.4 0.6 0.8
+Collision energy / eV
+0.0
+0.2
+0.4
+0.6Sticking probability
+v=1J=1
+experiment
+Zhu
+SchNet
+PaiNN
+FIG. 8. SchNet and PaiNN sticking probabilities for
+H2 scattering on Cu(211) at 925 K. Probabilities were
+calculated at different collision energies using SchNet (△△△) and
+PaiNN (×××) models for the ( ν=1, J=1) rovibrational states.
+Each point represents an averaged value of sticking prob-
+ability predicted using a committee of 3 models based on
+different train/test splits. For each initial condition, 10,000
+trajectories were used for ensemble averaging. Blue squares
+(□□□) indicate the theoretical results obtained by Zhu et al.
+(EANN model) [29]. The red line represents a sticking func-
+tion obtained from the experimental results reported by Kauf-
+mann et al. [16](923±3 K), scaled to match the theoretical
+probabilities obtained with the EANN model [29] at the high-
+est collision energy (saturation parameter A=0.66 for both
+sticking functions).
+absolute sticking probabilities from permeation experi-
+ments cannot be directly compared to simulations. [16]
+A direct comparison to molecular beam scattering exper-
+iments [12, 109] which provide absolute sticking probabil-
+ities may be preferable, but for the purpose of model as-
+sessment, the current comparison will suffice. To enable
+comparison to the permeation experiments, Zhu et al.
+have scaled the experimental results of Kaufmann et al.
+such that the probabilities of the experiment and calcu-
+lation match for the highest reported collision energy of
+0.8 eV. We similarly scale the sticking curve to the re-
+sults of Zhu et al. , which is shown in Fig. 8 (red line).
+We compare our independent simulation results to the
+literature data without any further scaling. Despite the
+fair agreement of SchNet with the reference data, the un-
+certainty of predictions made with the SchNet models is
+significantly higher than that obtained with the PaiNN
+models, which confirms the higher stability achieved by
+the PaiNN models. The sticking probabilities obtained
+with the SchNet models are noticeably lower than the rest
+of the models for collision energies above 0.4 eV. On the
+other hand, the results obtained with the PaiNN models
+better match the literature theoretical values and the ex-
+perimental curve. This provides evidence that the models
+also perform well for high-temperature scattering where
+surface atom motion cannot be neglected. While scatter-
+ing at 0 K surfaces can be approximated well with the
+0.2 0.4 0.6 0.8 1.0
+Collision energy / eV
+0.0
+0.2
+0.4
+0.6Sticking probability
+v=0
+J=1
+exp-P
+exp-S
+Smits
+SchNet
+PaiNN
+0.2 0.4 0.6
+Collision energy / eV
+v=1
+J=1
+exp-P
+exp-S
+Smits
+SchNet
+PaiNN
+FIG. 9. SchNet and PaiNN sticking probabilities
+for H 2 scattering on Cu(111) at 925 K. Probabilities
+were calculated at different collision energies using SchNet
+(△△△) and PaiNN ( ×××) models for the ground ( ν=0) (left)
+and excited ( ν=1) (right) vibrational states (J=1 in both
+cases). Each point represents an averaged value of stick-
+ing probability predicted using a committee of 3 models
+based on different train/test splits. For each initial condition,
+10,000 trajectories were used for ensemble averaging. Green
+squares ( □□□) indicate theoretical (QCD-EAM-DCM) results
+by Smits et al. [33]. Red lines represent sticking functions
+obtained from the experimental results reported by Kauf-
+mann et al. [16](923±3 K). The solid lines (labeled as exp-
+P) are scaled to match the PaiNN sticking probabilities at
+the highest incident energy (saturation parameter A=0.64 for
+both sticking functions). The dotted lines (labeled as exp-S)
+are scaled to match the QCD-EAM-DCM results (saturation
+parameter A=0.48 for ( ν=0) and A=0.51 for ( ν=1)).
+BOSS approach in an effective six-dimensional PES, the
+high-temperature scattering requires dynamical sampling
+of surface degrees of freedom which is straightforward
+with the high-dimensional MLIPs we have constructed
+here, and the one used by Zhu et al. [29].
+Sticking probabilities of H2 on Cu(111) have also been
+measured by Kaufmann et al. at 923±3 K. Within theo-
+retical studies, the majority of references are based on the
+BOSS approximation, and effective phonon corrections,
+which become increasingly inaccurate at elevated surface
+temperatures. [31] However, a recent QCD-EAM-DCM
+model reported by Smits et al. [33] accounted for surface
+degrees of freedom. To this date, this system has not
+been investigated at high temperatures, and at specific
+rovibrational states, with high-dimensional MLIPs.
+Fig. 9 reports the sticking probabilities predicted by
+the best final SchNet and PaiNN models on Cu(111)
+at a surface temperature of 925 K for two vibrational
+states (ν=0) and ( ν=1). We have scaled the experimen-
+tal curves to match the highest collision energy of the
+PaiNN model (exp-P in Fig. 9) and of the SchNet model
+(exp-S in Fig. 9). We apply the same scaling (saturation
+parameter A=0.64 for PaiNN, and A=0.48 for SchNet
+models) for both vibrational states. In previous sections,
+we demonstrated that the PaiNN models display a bet-
+ter performance, e.g. by providing a smoother energy
+landscape, lower prediction errors, and better agreement
+12
+with other references for sticking at Cu(211), as shown in
+Fig. 8. Another hint at the better performance of PaiNN
+models is the fact that a single saturation parameter can
+be used to scale both rovibrational states, as shown in
+Fig. 9. This is not the case with SchNet models, for
+which using the same saturation parameter, adjusted for
+the ground vibrational state (ν=0), leads to experimental
+curves that do not match the probabilities for the higher
+vibrational state (ν=1). Additionally, the PaiNN results
+for H 2 (ν=1) sticking are in excellent agreement with
+the shape of the sticking curve obtained from the high-
+temperature experiments and the model uncertainty is
+very low. The SchNet models again underestimate the
+sticking probability for H 2 (both ν=0 and ν=1) scat-
+tering at high incidence energies, when compared to the
+PaiNN results or exp-P experimental curves. This is true
+even if we factor in the sizable uncertainty of the results
+as estimated from the standard deviation between the
+committee of three models for most instances. In the
+case of PaiNN H 2 (ν=1) results, most of the predicted
+probabilities are slightly below the experimental results,
+especially for low collision energies, however, the predic-
+tions follow the shape of the experimental curve well.
+This is a promising result, considering that we did not
+apply a separate scaling for the H 2 (ν=1) experimental
+results.
+Fig. 9 additionally reproduces sticking probabilities
+reported with the DCM model (QCD-EAM-DCM) by
+Smits et al. [33]. These results show closer agreement
+with the SchNet rather than with the PaiNN predictions.
+However, we find this to be coincidental, due to the ob-
+vious weaknesses of the SchNet potential, such as the
+inability to create a smooth potential and significantly
+higher RMSEs and MAEs. Another likely origin of dis-
+crepancy between PaiNN and QCD-EAM-DCM models
+lies within the modeling of surface motion, since the pre-
+dictions of sticking probabilities made with analytical
+QCD-BOSS model, and PaiNN at 0 K show excellent
+agreement (as shown in Fig. 6). The surface motion in
+PaiNN is included just as any other degree of freedom,
+through the atomic NNs, giving a unified model for the
+movement of all atoms, whereas in the case of QCD-
+EAM-DCM model, the surface degrees of freedom are
+modeled by a potential based on embedded atom method
+(EAM), developed by Sheng et al. [110], which was fitted
+to the ab initio database and corrected with experimen-
+tal results. Notably, the first-principles calculations used
+to fit this potential are based on a different functional.
+Furthermore, Sheng et al. [110] exclusively included data
+at 0 and 300 K to construct the EAM potentials, which
+does not guarantee extrapolation to 900 K. [111]
+We can further elucidate why adaptive sampling for
+low-temperature scattering enables us to describe high-
+temperature scattering by studying the ability of the two
+final models to predict the thermal lattice expansion of
+copper. Supplementary Figure S6 shows the dependence
+of the energy with respect to the copper lattice constant.
+We see that PaiNN is in close agreement with DFT over
+a lattice expansion/contraction of ±5%, despite the fact
+that we have only generated training data in fixed-size
+unit cells. The ability to describe the lattice expansion
+arises from the use of extended unit cells and the inclu-
+sion of high temperature MD data of the clean surfaces.
+We can conclude that the PaiNN MLIP is able to faith-
+fully describe reactive scattering as a function of kinetic
+energy and molecular quantum state for a variety of sur-
+face facets and temperatures. Based on the same training
+data, the SchNet model was not able to achieve this to
+the same level, despite multiple rounds of adaptive sam-
+pling.
+IV. DISCUSSION AND CONCLUSIONS
+We present a workflow to iteratively grow a training
+data set of DFT reference energies and forces based on
+adaptive sampling focused on improving the description
+of dynamic observables such as the sticking probability
+as a function of initial molecular quantum state and colli-
+sion energy. We perform UQ based on ensemble learning
+throughout the adaptive sampling and calculate standard
+deviations on sticking probability predictions to indicate
+the epistemic error of the models. This is a generally ap-
+plicable approach for the construction of MLIPs in gas-
+surface dynamics.
+Utilizing this approach, we have compared the abil-
+ity of two types of MLIPs based on MPNNs to describe
+the reactive scattering of molecules at metal surfaces,
+specifically the scattering and dissociative chemisorption
+of molecular hydrogen on multiple moving copper single-
+crystal surfaces. The two compared models are the in-
+variant SchNet model and the equivariant PaiNN model.
+Both models are based on an MPNN with atom-centered
+descriptors that are trained against a combined energy
+and force loss function in an end-to-end fashion. The
+two models mainly differ in the nature of the descriptors:
+In the case of PaiNN, the atomic environment is also de-
+scribed with directional distance vectors, rather than just
+based on a spectrum of pairwise distances.
+Based on our analysis of the dynamical simulation of
+reactive surface chemistry, we can make the following ob-
+servations:
+• The SchNet model based on the initial data set was
+riddled with PES artifacts and even after several
+adaptive sampling iterations, the SchNet model was
+not able to provide a fully smooth energy land-
+scape. While a significantly higher cutoff might po-
+tentially cure some of these artifacts, it would come
+at a significant increase in computational cost. In
+contrast, with the same cutoff, the equivariant
+MPNN PaiNN was able to provide qualitatively
+correct and smooth PESs and (semi)quantitatively
+correct sticking probabilities using only the initial
+data set, reaching a fully converged quantitative
+description when including the adaptively sampled
+training data points.
+13
+• The PaiNN models, based on the same data, yield a
+beyond-five-fold reduction in force errors compared
+to the invariant MPNN SchNet and provide a bet-
+ter description of sparsely sampled PES regions.
+While SchNet models noticeably improve in later
+iterations with more evenly sampled training data,
+they remain less accurate than the PaiNN models.
+This finding is consistent with the benchmarks of
+PaiNN and NequIP against invariant architectures
+reported for the molecular dynamics simulations of
+small organic molecules (e.g. as represented by the
+MD17 data set [112]). [72, 73]
+• Adaptive sampling and active learning techniques
+have become a standard approach for the construc-
+tion of robust and accurate MLIPs for molecular
+dynamics simulations of molecules and materials
+and have an important role to play to robustly
+predict dynamic observables in gas-surface dynam-
+ics and heterogeneous catalysis. Our results show
+that the equivariant PaiNN MLIPs generalize well
+based on sparse phase space data. This suggests
+that adaptive sampling with equivariant MPNNs
+can be performed based on a minimalistic initial
+data set to only generate as much reference data
+as absolutely necessary. This is a crucial benefit
+for the study of gas-surface dynamics where DFT
+reference data comes with a considerable compu-
+tational cost. Additionally, our results show that
+UQ may be crucial in assessing the final success
+of every adaptive sampling iteration in predicting
+gas-surface-based reaction probabilities.
+• The equivariant PaiNN model generalized better
+to different tasks and different conditions than
+SchNet. Our initial training data set was based
+on scattering simulations at frozen surfaces and
+AIMD simulations of clean single-crystal surfaces
+at different temperatures. All adaptive sampling
+was done to improve the description of scatter-
+ing at 0 K surfaces. Yet, the PaiNN models were
+able to capture scattering at high-temperature sur-
+faces, whereas the best SchNet model significantly
+underestimated sticking probabilities at high colli-
+sion energies. Similarly, the PaiNN models have
+shown good performance in modeling scattering
+at the Cu(211) surface for our initial data set, in
+which structures sampled from scattering events at
+Cu(211) were lacking. Going beyond the cases cov-
+ered by the current training data (e.g. dense hy-
+drogen overlayers at copper surfaces) may require
+additional adaptive sampling steps.
+The shortcomings of the SchNet model are based on
+its reliance on distance-only information within the cut-
+off region. Further details beyond the cutoff only enter
+indirectly via the message passing through the layers of
+the network. This appears to be insufficient to generate
+a smooth energy landscape of hydrogen-metal chemistry.
+Other successful (invariant) MLIPs, such as the EANN
+model or the Behler-Parrinello NNs based on ACSFs, in-
+clude 3-body terms within the descriptor which better
+resolve the local atomic environment, leading to smooth
+and accurate energy landscapes. Equivariant MPNNs
+such as PaiNN achieve the same by propagating vector-
+valued features through the network that can pass di-
+rectional information between atoms. The latter has the
+benefit of reducing the number of hyperparameters as-
+sociated with the initial basis definition, potentially pro-
+viding a more user-friendly ”black-box” approach. The
+equivariant PaiNN models proved their superiority over
+SchNet in every area of our study, however, we note that
+PaiNN requires more memory due to the inclusion of ten-
+sorial features, and thus for certain systems or computing
+architectures, it may be beneficial to employ rotationally
+invariant features.
+The excellent performance of equivariant MPNN-based
+MLIPs will, in the future, allow us to systematically
+build multi-purpose models for reactive chemistry. While
+adaptive sampling and ensemble learning allow us to im-
+prove model descriptions for specific dynamical observ-
+ables (e.g. reactive scattering on single crystal surfaces),
+we can also assess and improve their ability to describe
+further related tasks (e.g. hydrogen evolution on crys-
+talline nanoparticles) to systematically increase the range
+of applicability of an MLIP. Gas-surface dynamics puts
+an extreme demand on the accuracy and efficiency of
+MLIPs. Reaction probabilities change drastically with
+a subtle change of barriers and non-equilibrium events
+with low reaction probabilities require sampling of 10 4
+to 10 6 trajectories to achieve meaningful statistical con-
+vergence. While equivariant MPNN models appear to
+already satisfy the requirement of accuracy, their infer-
+ence performance needs to further improve to advance
+the study of chemical dynamics at surfaces. Both SchNet
+and PaiNN models used in this study already improve
+roughly 10 6 times over DFT. Smaller NN models such
+as the EANN [54] or linear models such as the atomic
+cluster expansion (ACE) [113] offer high prediction effi-
+ciency, but may not offer as much generalization, which
+means that a trade-off might need to be sought between
+MLIPs that are general-purpose and MLIPs that have
+high evaluation efficiency.
+ORCID IDS
+Wojciech G. Stark https://orcid.org/
+0000-0001-6279-2638
+Julia Westermayr https://orcid.org/
+0000-0002-6531-0742
+Oscar A. Douglas-Gallardo https://orcid.org/
+0000-0002-2250-3894
+James Gardner https://orcid.org/
+0000-0003-1840-804X
+Scott Habershon https://orcid.org/
+0000-0001-5932-6011
+14
+Reinhard J. Maurer https://orcid.org/
+0000-0002-3004-785X
+ACKNOWLEDGMENTS
+This work was financially supported by The Lever-
+hulme Trust (RPG-2019-078), the UKRI Future Leaders
+Fellowship programme (MR/S016023/1), and the Aus-
+trian Science Fund (FWF) [J 4522-N]. High-performance
+computing resources were provided via the Scientific
+Computing Research Technology Platform of the Univer-
+sity of Warwick, the EPSRC-funded Materials Chemistry
+Consortium for the ARCHER2 UK National Supercom-
+puting Service (EP/R029431/1), and the EPSRC-funded
+HPC Midlands+ computing centre (EP/P020232/1). We
+thank Bin Jiang (USTC, Hefei) for providing us with the
+training and test data set reported in Ref. [29]. We also
+thank Nils Hertl (Warwick), Daniel Auerbach (MPIBPC,
+G¨ ottingen), and Sven Schwabe (IFNANO, G¨ ottingen) for
+helpful discussions regarding the experimental results re-
+ported in Ref. [16].
+DATA AVAILABILITY
+The files containing inputs and outputs of the AIMD
+simulations and the DFT single-point calculations used in
+this study can be found within the NOMAD repository:
+10.17172/NOMAD/2023.05.03-2.
+CODE AVAILABILITY
+The molecular dynamics simulations were performed
+with the publicly available open-source code NQC-
+Dynamics.jl. The source code with detailed doc-
+umentation, including many examples, is available
+on GitHub: https://nqcd.github.io/NQCDynamics.
+jl/stable/. The dynamics for high-error struc-
+ture search and the clustering scripts are available
+in the GitHub repository: https://github.com/wgst/
+ml-gas-surface. Detailed instructions for developing
+and using gas-surface MLIPs with the presented work-
+flow can be accessed here: https://wgst.github.io/
+ml-gas-surface/.
+COMPETING INTERESTS
+The authors declare no competing financial or non-
+financial interests.
+AUTHOR CONTRIBUTIONS
+W ojciech Stark: conceptualization (supporting);
+data curation (lead); investigation (lead); software
+(lead); validation (lead); visualization (lead); writing
+– original draft (lead); writing – review and edit-
+ing (equal). Julia W estermayr: conceptualization
+(supporting); investigation (supporting); software (sup-
+porting); writing – review and editing (supporting).
+Oscar A. Douglas-Gallardo: investigation (support-
+ing); software (supporting). writing – review and editing
+(supporting). James Gardner: software (supporting);
+writing – review and editing (supporting). Scott
+Habershon: supervision (supporting); writing – review
+and editing (supporting). Reinhard J. Maurer: con-
+ceptualization (lead); investigation (equal); supervision
+(lead); writing – review and editing (equal).
+REFERENCES
+[1] Kirchheim, R. Hydrogen solubility and diffusivity in de-
+fective and amorphous metals. Prog. Mater. Sci. 1988,
+32, 261–325.
+[2] Liu, N.; Wu, L.; Qin, Z.; Shoesmith, D. W. Roles of Ra-
+diolytic and Externally Generated H 2 in the Corrosion
+of Fractured Spent Nuclear Fuel. Environ. Sci. Technol.
+2016, 50, 12348–12355.
+[3] Sabbe, M. K.; Reyniers, M.-F.; Reuter, K. First-
+principles kinetic modeling in heterogeneous catalysis:
+an industrial perspective on best-practice, gaps and
+needs. Catal. Sci. Technol. 2012, 2, 2010.
+[4] Ertl, G. Reactions at Surfaces: From Atoms to Com-
+plexity (Nobel Lecture). Angew. Chem. Int. Ed. 2008,
+47, 3524–3535.
+[5] Smith, C.; Hill, A. K.; Torrente-Murciano, L. Current
+and future role of Haber–Bosch ammonia in a carbon-
+free energy landscape. Energy Environ. Sci. 2020, 13,
+331–344.
+[6] Waugh, K. C. Methanol Synthesis. Catal. Today 1992,
+15, 51–75.
+[7] Grabow, L. C.; Mavrikakis, M. Mechanism of Methanol
+Synthesis on Cu through CO 2 and CO Hydrogenation.
+ACS Catal. 2011, 1, 365–384.
+[8] Behrens, M.; Studt, F.; Kasatkin, I.; K¨ uhl, S.;
+H¨ avecker, M.; Abild-Pedersen, F.; Zander, S.; Girgs-
+dies, F.; Kurr, P.; Kniep, B.-L.; Tovar, M.; Fis-
+cher, R. W.; Nørskov, J. K.; Schl¨ ogl, R. The Active Site
+of Methanol Synthesis over Cu/ZnO/Al 2O3 Industrial
+Catalysts. Science 2012, 336, 893–897.
+[9] Anger, G.; Winkler, A.; Rendulic, K. D. Adsorption
+and desorption kinetics in the systems H 2/Cu(111),
+H2/Cu(110) and H 2/Cu(100). Surf. Sci. 1989, 220, 1–
+17.
+[10] Berger, H. F.; Leisch, M.; Winkler, A.; Rendulic, K. D.
+A search for vibrational contributions to the activated
+adsorption of H 2 on copper. Chem. Phys. Rev. 1990,
+175, 425–428.
+[11] Berger, H. F.; Rendulic, K. D. An investigation of vi-
+brationally assisted adsorption: the cases H 2/Cu(110)
+and H2/Al(110). Surf. Sci. 1991, 253, 325–333.
+[12] Rettner, C. T.; Michelsen, H. A.; Auerbach, D. J.
+Quantum-state-specific dynamics of the dissociative ad-
+sorption and associative desorption of H 2 at a Cu(111)
+15
+surface. J. Chem. Phys. 1995, 102, 4625–4641, Pub-
+lisher: American Institute of Physics.
+[13] Hodgson, A.; Samson, P.; Wight, A.; Cottrell, C. Ro-
+tational Excitation and Vibrational Relaxation of H 2
+(v=1,J=0) Scattered from Cu(111). Phys. Rev. Lett.
+1997, 78.
+[14] Hou, H.; Gulding, S. J.; Rettner, C. T.; Wodtke, A. M.;
+Auerbach, D. J. The Stereodynamics of a Gas-Surface
+Reaction. Science 1997, 277, 80–82.
+[15] Murphy, M. J.; Hodgson, A. Adsorption and desorption
+dynamics of H2 and D2 on Cu(111): The role of surface
+temperature and evidence for corrugation of the disso-
+ciation barrier. J. Chem. Phys. 1998, 108, 4199–4211.
+[16] Kaufmann, S.; Shuai, Q.; Auerbach, D. J.;
+Schwarzer, D.; Wodtke, A. M. Associative desorp-
+tion of hydrogen isotopologues from copper surfaces:
+Characterization of two reaction mechanisms. J. Chem.
+Phys. 2018, 148, 194703.
+[17] Chadwick, H.; Somers, M. F.; Stewart, A. C.;
+Alkoby, Y.; Carter, T. J. D.; Butkovicova, D.;
+Alexandrowicz, G. Stopping molecular rotation using
+coherent ultra-low-energy magnetic manipulations. Nat.
+Commun. 2022, 13, 2287.
+[18] Luntz, A. C.; Persson, M. How adiabatic is activated ad-
+sorption/associative desorption? J. Chem. Phys. 2005,
+123, 074704, Publisher: American Institute of Physics.
+[19] Salin, A. Theoretical study of hydrogen dissociative ad-
+sorption on the Cu(110) surface. J. Chem. Phys. 2006,
+124, 104704.
+[20] D´ ıaz, C.; Pijper, E.; Olsen, R. A.; Busnengo, H. F.;
+Auerbach, D. J.; Kroes, G. J. Chemically Accurate Sim-
+ulation of a Prototypical Surface Reaction: H 2 Dissoci-
+ation on Cu(111). Science 2009, 326, 832–834.
+[21] D´ ıaz, C.; Olsen, R. A.; Busnengo, H. F.; Kroes, G. J.
+Dynamics on Six-Dimensional Potential Energy Sur-
+faces for H 2 /Cu(111): Corrugation Reducing Proce-
+dure versus Modified Shepard Interpolation Method and
+PW91 versus RPBE. J. Phys. Chem. C 2010, 114,
+11192–11201.
+[22] Marashdeh, A.; Casolo, S.; Sementa, L.; Zacharias, H.;
+Kroes, G.-J. Surface Temperature Effects on Dissocia-
+tive Chemisorption of H 2 on Cu(100). J. Phys. Chem.
+C 2013, 117, 8851–8863.
+[23] Mondal, A.; Wijzenbroek, M.; Bonfanti, M.; D´ ıaz, C.;
+Kroes, G.-J. Thermal Lattice Expansion Effect on Re-
+active Scattering of H 2 from Cu(111) at T s=925 K. J.
+Phys. Chem. A 2013, 117, 8770–8781.
+[24] Nattino, F.; Genova, A.; Guijt, M.; Muzas, A. S.;
+D´ ıaz, C.; Auerbach, D. J.; Kroes, G.-J. Dissociation and
+recombination of D 2 on Cu(111): Ab initio molecular
+dynamics calculations and improved analysis of desorp-
+tion experiments. J. Chem. Phys. 2014, 141, 124705.
+[25] Jiang, B.; Guo, H. Six-dimensional quantum dynamics
+for dissociative chemisorption of H 2 and D2 on Ag(111)
+on a permutation invariant potential energy surface.
+Phys. Chem. Chem. Phys. 2014, 16, 24704–24715.
+[26] Cao, K.; F¨ uchsel, G.; Kleyn, A. W.; Juurlink, L. B. F.
+Hydrogen adsorption and desorption from Cu(111) and
+Cu(211). Phys. Chem. Chem. Phys. 2018, 20, 22477–
+22488, Publisher: The Royal Society of Chemistry.
+[27] Spiering, P.; Meyer, J. Testing Electronic Friction Mod-
+els: Vibrational De-excitation in Scattering of H 2 and
+D2 from Cu(111). J. Phys. Chem. Lett. 2018, 9, 1803–
+1808.
+[28] Smeets, E. W. F.; F¨ uchsel, G.; Kroes, G.-J. Quantum
+Dynamics of Dissociative Chemisorption of H 2 on the
+Stepped Cu(211) Surface. J. Phys. Chem. C 2019, 123,
+23049–23063.
+[29] Zhu, L.; Zhang, Y.; Zhang, L.; Zhou, X.; Jiang, B.
+Unified and transferable description of dynamics of H 2
+dissociative adsorption on multiple copper surfaces via
+machine learning. Phys. Chem. Chem. Phys. 2020, 22,
+13958–13964, Publisher: Royal Society of Chemistry.
+[30] Galparsoro, O.; Kaufmann, S.; Auerbach, D. J.; Kan-
+dratsenka, A.; Wodtke, A. M. First principles rates for
+surface chemistry employing exact transition state the-
+ory: application to recombinative desorption of hydro-
+gen from Cu(111). Phys. Chem. Chem. Phys. 2020, 22,
+17532–17539, Publisher: The Royal Society of Chem-
+istry.
+[31] Dutta, J.; Mandal, S.; Adhikari, S.; Spiering, P.;
+Meyer, J.; Somers, M. F. Effect of surface temperature
+on quantum dynamics of H 2 on Cu(111) using a chemi-
+cally accurate potential energy surface. J. Chem. Phys.
+2021, 154, 104103.
+[32] Smits, B.; Litjens, L. G. B.; Somers, M. F. Accurate
+description of the quantum dynamical surface tempera-
+ture effects on the dissociative chemisorption of H2 from
+Cu(111). J. Chem. Phys. 2022, 156, 214706.
+[33] Smits, B.; Somers, M. F. The quantum dynamics of H 2
+on Cu(111) at a surface temperature of 925 K: Com-
+paring state-of-the-art theory to state-of-the-art exper-
+iments. J. Chem. Phys. 2022, 157, 134704.
+[34] Zhu, L.; Hu, C.; Chen, J.; Jiang, B. Investigat-
+ing Eley-Rideal Recombination of Hydrogen Atoms on
+Cu(111) via a High-dimensional Neural Network Poten-
+tial Energy Surface. Phys. Chem. Chem. Phys. 2023,
+10.1039.D2CP05479E.
+[35] Kroes, G.-J.; D´ ıaz, C. Quantum and classical dynamics
+of reactive scattering of H 2 from metal surfaces. Chem.
+Soc. Rev. 2016, 45, 3658–3700.
+[36] Kroes, G.-J. Computational approaches to dissociative
+chemisorption on metals: towards chemical accuracy.
+Phys. Chem. Chem. Phys. 2021, 23, 8962–9048.
+[37] Busnengo, H. F.; Salin, A.; Dong, W. Representation of
+the 6D potential energy surface for a diatomic molecule
+near a solid surface. J. Chem. Phys. 2000, 112, 7641–
+7651.
+[38] Busnengo, H. F.; Di C´ esare, M. A.; Dong, W.; Salin, A.
+Surface temperature effects in dynamic trapping medi-
+ated adsorption of light molecules on metal surfaces:
+H2 on Pd(111) and Pd(110). Phys. Rev. B 2005, 72,
+125411.
+[39] Smeets, E. W. F.; Kroes, G.-J. Designing new SRP
+density functionals including non-local vdW-DF2 cor-
+relation for H 2+Cu(111) and their transferability to
+H2+Ag(111), Au(111) and Pt(111). Phys. Chem. Chem.
+Phys. 2021, 23, 7875–7901.
+[40] Lozano, A.; Gross, A.; Busnengo, H. F. Adsorption dy-
+namics of H 2 on Pd(100) from first principles. Phys.
+Chem. Chem. Phys. 2009, 11, 5814.
+[41] Tchakoua, T.; Smeets, E. W. F.; Somers, M.; Kroes, G.-
+J. Toward a Specific Reaction Parameter Density Func-
+tional for H 2+Ni(111): Comparison of Theory with
+Molecular Beam Sticking Experiments. J. Phys. Chem.
+C 2019, 123, 20420–20433.
+[42] Smits, B.; Somers, M. F. Beyond the static corruga-
+tion model: Dynamic surfaces with the embedded atom
+16
+method. J. Chem. Phys. 2021, 154, 074710.
+[43] Smits, B.; Somers, M. F. The quantum dynamics of H 2
+on Cu(111) at a surface temperature of 925 K: Com-
+paring state-of-the-art theory to state-of-the-art exper-
+iments 2. J. Chem. Phys. 2023, 158, 014704.
+[44] Ischtwan, J.; Collins, M. A. Molecular potential energy
+surfaces by interpolation. J. Chem. Phys. 1994, 100,
+8080–8088.
+[45] Thompson, K. C.; Collins, M. A. Molecular potential-
+energy surfaces by interpolation: Further refinements.
+J. Chem. Soc., Faraday Trans. 1997, 93, 871–878.
+[46] Crespos, C.; Collins, M.; Pijper, E.; Kroes, G. Multi-
+dimensional potential energy surface determination by
+modified Shepard interpolation for a molecule–surface
+reaction: H 2+Pt(111). Chem. Phys. Lett. 2003, 376,
+566–575.
+[47] Crespos, C.; Collins, M. A.; Pijper, E.; Kroes, G. J. Ap-
+plication of the modified Shepard interpolation method
+to the determination of the potential energy surface for a
+molecule–surface reaction: H 2+Pt(111). J. Chem. Phys.
+2004, 120, 2392–2404.
+[48] Braams, B. J.; Bowman, J. M. Permutationally invari-
+ant potential energy surfaces in high dimensionality.Int.
+Rev. Phys. Chem. 2009, 28, 577–606.
+[49] Bowman, J. M.; Czak´ o, G.; Fu, B. High-dimensional ab
+initio potential energy surfaces for reaction dynamics
+calculations. Phys. Chem. Chem. Phys. 2011, 13, 8094.
+[50] Jiang, B.; Guo, H. Permutation invariant polynomial
+neural network approach to fitting potential energy sur-
+faces. J. Chem. Phys. 2013, 139, 054112.
+[51] Jiang, B.; Guo, H. Permutation invariant polynomial
+neural network approach to fitting potential energy sur-
+faces. III. Molecule-surface interactions. J. Chem. Phys.
+2014, 141, 034109.
+[52] Hu, X.; Jiang, B.; Xie, D.; Guo, H. Site-specific dissoci-
+ation dynamics of H2/D2 on Ag(111) and Co(0001) and
+the validity of the site-averaging model. J. Chem. Phys.
+2015, 143, 114706.
+[53] Jiang, B.; Hu, X.; Lin, S.; Xie, D.; Guo, H.
+Six-dimensional quantum dynamics of dissociative
+chemisorption of H 2 on Co(0001) on an accurate global
+potential energy surface. Phys. Chem. Chem. Phys.
+2015, 17, 23346–23355.
+[54] Zhang, Y.; Hu, C.; Jiang, B. Embedded Atom Neu-
+ral Network Potentials: Efficient and Accurate Machine
+Learning with a Physically Inspired Representation. J.
+Phys. Chem. Lett. 2019, 10, 4962–4967.
+[55] Bonfanti, M.; Somers, M. F.; D´ ıaz, C.; Busnengo, H. F.;
+Kroes, G.-J. 7D Quantum Dynamics of H 2 Scattering
+from Cu(111): The Accuracy of the Phonon Sudden Ap-
+proximation. Z. Phys. Chem. 2013, 130617035227002.
+[56] Kroes, G.-J.; Juaristi, J. I.; Alducin, M. Vibrational
+Excitation of H 2 Scattering from Cu(111): Effects of
+Surface Temperature and of Allowing Energy Exchange
+with the Surface. J. Phys. Chem. C 2017, 121, 13617–
+13633.
+[57] Abufager, P. N.; Crespos, C.; Busnengo, H. F. Modified
+Shepard interpolation method applied to trapping me-
+diated adsorption dynamics. Phys. Chem. Chem. Phys.
+2007, 9, 2258.
+[58] Shao, K.; Chen, J.; Zhao, Z.; Zhang, D. H. Communica-
+tion: Fitting potential energy surfaces with fundamen-
+tal invariant neural network.J. Chem. Phys. 2016, 145,
+071101.
+[59] Behler, J. Four Generations of High-Dimensional Neu-
+ral Network Potentials. Chem. Rev. 2021, 121, 10037–
+10072.
+[60] Deringer, V. L.; Caro, M. A.; Cs´ anyi, G. Machine Learn-
+ing Interatomic Potentials as Emerging Tools for Mate-
+rials Science. Adv. Mater. 2019, 31, 1902765.
+[61] Kocer, E.; Ko, T. W.; Behler, J. Neural Network Po-
+tentials: A Concise Overview of Methods. Annu. Rev.
+Phys. Chem. 2022, 73, 163–186.
+[62] Behler, J.; Parrinello, M. Generalized Neural-Network
+Representation of High-Dimensional Potential-Energy
+Surfaces. Phys. Rev. Lett. 2007, 98, 146401.
+[63] Musil, F.; Grisafi, A.; Bart´ ok, A. P.; Ortner, C.;
+Cs´ anyi, G.; Ceriotti, M. Physics-Inspired Structural
+Representations for Molecules and Materials. Chem.
+Rev. 2021, 121, 9759–9815.
+[64] Zhang, Y.; Lin, Q.; Jiang, B. Atomistic neural net-
+work representations for chemical dynamics simulations
+of molecular, condensed phase, and interfacial systems:
+Efficiency, representability, and generalization. WIREs
+Comput Mol Sci 2022, 13, e1645.
+[65] Langer, M. F.; Goeßmann, A.; Rupp, M. Representa-
+tions of molecules and materials for interpolation of
+quantum-mechanical simulations via machine learning.
+npj Comput. Mater. 2022, 8, 41.
+[66] Behler, J. Atom-centered symmetry functions for con-
+structing high-dimensional neural network potentials.J.
+Chem. Phys. 2011, 134, 074106.
+[67] Bart´ ok, A. P.; Kondor, R.; Cs´ anyi, G. On representing
+chemical environments. Phys. Rev. B 2013, 87, 184115.
+[68] Huo, H.; Rupp, M. Unified representation of molecules
+and crystals for machine learning. Mach. Learn.: Sci.
+Technol. 2022, 3, 045017.
+[69] Rupp, M.; Tkatchenko, A.; M¨ uller, K.-R.; von Lilien-
+feld, O. A. Fast and Accurate Modeling of Molecular At-
+omization Energies with Machine Learning. Phys. Rev.
+Lett. 2012, 108, 058301.
+[70] Gilmer, J.; Schoenholz, S. S.; Riley, P. F.; Vinyals, O.;
+Dahl, G. E. Neural Message Passing for Quantum
+Chemistry. Proceedings of the 34th International Con-
+ference on Machine Learning. 2017; pp 1263–1272,
+ISSN: 2640-3498.
+[71] Sch¨ utt, K. T.; Arbabzadah, F.; Chmiela, S.;
+M¨ uller, K. R.; Tkatchenko, A. Quantum-chemical in-
+sights from deep tensor neural networks. Nat. Commun.
+2017, 8, 13890.
+[72] Sch¨ utt, K.; Unke, O.; Gastegger, M. Equivariant mes-
+sage passing for the prediction of tensorial properties
+and molecular spectra. Proceedings of the 38th Interna-
+tional Conference on Machine Learning. 2021; pp 9377–
+9388, ISSN: 2640-3498.
+[73] Batzner, S.; Musaelian, A.; Sun, L.; Geiger, M.;
+Mailoa, J. P.; Kornbluth, M.; Molinari, N.; Smidt, T. E.;
+Kozinsky, B. E(3)-equivariant graph neural networks for
+data-efficient and accurate interatomic potentials. Nat.
+Commun. 2022, 13, 2453.
+[74] Unke, O. T.; Chmiela, S.; Gastegger, M.; Sch¨ utt, K. T.;
+Sauceda, H. E.; M¨ uller, K.-R. SpookyNet: Learning
+force fields with electronic degrees of freedom and non-
+local effects. Nat. Commun. 2021, 12, 7273.
+[75] Musaelian, A.; Batzner, S.; Johansson, A.; Sun, L.;
+Owen, C. J.; Kornbluth, M.; Kozinsky, B. Learning lo-
+cal equivariant representations for large-scale atomistic
+dynamics. Nat. Commun. 2023, 14, 579, Number: 1
+17
+Publisher: Nature Publishing Group.
+[76] Qiao, Z.; Christensen, A. S.; Welborn, M.; Manby, F. R.;
+Anandkumar, A.; Miller, T. F. Informing geometric
+deep learning with electronic interactions to accelerate
+quantum chemistry.Proc. Natl. Acad. Sci. U.S.A.2022,
+119, e2205221119.
+[77] Haghighatlari, M.; Li, J.; Guan, X.; Zhang, O.;
+Das, A.; Stein, C. J.; Heidar-Zadeh, F.; Liu, M.; Head-
+Gordon, M.; Bertels, L.; Hao, H.; Leven, I.; Head-
+Gordon, T. NewtonNet: a Newtonian message passing
+network for deep learning of interatomic potentials and
+forces. Digital Discovery 2022, 1, 333–343.
+[78] Batatia, I.; Kov´ acs, D. P.; Simm, G. N. C.; Ortner, C.;
+Cs´ anyi, G. MACE: Higher Order Equivariant Message
+Passing Neural Networks for Fast and Accurate Force
+Fields. 36th Conference on Neural Information Process-
+ing Systems. 2022.
+[79] Behler, J. Constructing high-dimensional neural
+network potentials: A tutorial review. Int. J.
+Quantum Chem. 2015, 115, 1032–1050, eprint:
+https://onlinelibrary.wiley.com/doi/pdf/10.1002/qua.24890.
+[80] Botu, V.; Ramprasad, R. Adaptive machine learning
+framework to accelerate ab initio molecular dynamics.
+Int. J. Quantum Chem. 2015, 115, 1074–1083.
+[81] Li, Z.; Kermode, J. R.; De Vita, A. Molecular Dy-
+namics with On-the-Fly Machine Learning of Quantum-
+Mechanical Forces. Phys. Rev. Lett. 2015, 114, 096405.
+[82] Gastegger, M.; Behler, J.; Marquetand, P. Machine
+learning molecular dynamics for the simulation of in-
+frared spectra. Chem. Sci. 2017, 8, 6924–6935.
+[83] Podryabinkin, E. V.; Shapeev, A. V. Active learning of
+linearly parametrized interatomic potentials. Comput.
+Mater. Sci. 2017, 140, 171–180.
+[84] Smith, J. S.; Nebgen, B.; Lubbers, N.; Isayev, O.; Roit-
+berg, A. E. Less is more: Sampling chemical space with
+active learning. J. Chem. Phys. 2018, 148, 241733.
+[85] van der Oord, C.; Sachs, M.; Kov´ acs, D. P.; Ortner, C.;
+Cs´ anyi, G. Hyperactive Learning (HAL) for Data-
+Driven Interatomic Potentials. 2022; http://arxiv.
+org/abs/2210.04225, arXiv:2210.04225 [physics, stat].
+[86] Kulichenko, M.; Barros, K.; Lubbers, N.; Li, Y. W.;
+Messerly, R.; Tretiak, S.; Smith, J. S.; Nebgen, B.
+Uncertainty-driven dynamics for active learning of in-
+teratomic potentials. Nat Comput Sci 2023, 3, 230–239.
+[87] Gonzalez-Lafont, A.; Truong, T. N.; Truhlar, D. G.
+Direct dynamics calculations with NDDO (neglect of
+diatomic differential overlap) molecular orbital theory
+with specific reaction parameters. J. Phys. Chem. 1991,
+95, 4618–4627.
+[88] Sementa, L.; Wijzenbroek, M.; van Kolck, B. J.;
+Somers, M. F.; Al-Halabi, A.; Busnengo, H. F.;
+Olsen, R. A.; Kroes, G. J.; Rutkowski, M.; Thewes, C.;
+Kleimeier, N. F.; Zacharias, H. Reactive scattering of
+H2 from Cu(100): Comparison of dynamics calculations
+based on the specific reaction parameter approach to
+density functional theory with experiment. J. Chem.
+Phys. 2013, 138, 044708, Publisher: American Insti-
+tute of Physics.
+[89] Nour Ghassemi, E.; Somers, M.; Kroes, G.-J. Test of
+the Transferability of the Specific Reaction Parameter
+Functional for H 2+Cu(111) to D 2+Ag(111). J. Phys.
+Chem. C 2018, 122, 22939–22952.
+[90] Migliorini, D.; Chadwick, H.; Nattino, F.; Guti´ errez-
+Gonz´ alez, A.; Dombrowski, E.; High, E. A.; Guo, H.;
+Utz, A. L.; Jackson, B.; Beck, R. D.; Kroes, G.-J. Sur-
+face Reaction Barriometry: Methane Dissociation on
+Flat and Stepped Transition-Metal Surfaces. J. Phys.
+Chem. Lett. 2017, 8, 4177–4182.
+[91] F¨ uchsel, G.; Cao, K.; Er, S.; Smeets, E. W. F.;
+Kleyn, A. W.; Juurlink, L. B. F.; Kroes, G.-J. Anoma-
+lous Dependence of the Reactivity on the Presence of
+Steps: Dissociation of D 2 on Cu(211). J. Phys. Chem.
+Lett. 2018, 9, 170–175.
+[92] Klimeˇ s, J.; Bowler, D. R.; Michaelides, A. Chemical
+accuracy for the van der Waals density functional. J.
+Phys.: Condens. Matter 2010, 22, 022201.
+[93] Wijzenbroek, M.; Klein, D. M.; Smits, B.;
+Somers, M. F.; Kroes, G.-J. Performance of a
+Non-Local van der Waals Density Functional on the
+Dissociation of H 2 on Metal Surfaces. J. Phys. Chem.
+A 2015, 119, 12146–12158.
+[94] Sch¨ utt, K. T.; Sauceda, H. E.; Kindermans, P.-J.;
+Tkatchenko, A.; M¨ uller, K.-R. SchNet – A deep learn-
+ing architecture for molecules and materials. J. Chem.
+Phys. 2018, 148, 241722.
+[95] Sch¨ utt, K. T.; Kessel, P.; Gastegger, M.; Nicoli, K. A.;
+Tkatchenko, A.; M¨ uller, K.-R. SchNetPack: A Deep
+Learning Toolbox For Atomistic Systems. J. Chem.
+Theory Comput. 2019, 15, 448–455.
+[96] Batatia, I.; Batzner, S.; Kov´ acs, D. P.; Musaelian, A.;
+Simm, G. N. C.; Drautz, R.; Ortner, C.; Kozinsky, B.;
+Cs´ anyi, G. The Design Space of E(3)-Equivariant
+Atom-Centered Interatomic Potentials. 2022; http://
+arxiv.org/abs/2205.06643, arXiv:2205.06643 [cond-
+mat, physics:physics, stat].
+[97] Maurer, R. J.; Askerka, M.; Batista, V. S.; Tully, J. C.
+Ab initio tensorial electronic friction for molecules on
+metal surfaces: Nonadiabatic vibrational relaxation.
+Phys. Rev. B 2016, 94, 115432, Publisher: American
+Physical Society.
+[98] Box, C. L.; Stark, W. G.; Maurer, R. J. Ab initio
+calculation of electron-phonon linewidths and molecu-
+lar dynamics with electronic friction at metal surfaces
+with numeric atom-centered orbitals. arXiv:2112.00121
+[cond-mat] 2021, arXiv: 2112.00121.
+[99] Nattino, F.; D´ ıaz, C.; Jackson, B.; Kroes, G.-J. Effect
+of Surface Motion on the Rotational Quadrupole Align-
+ment Parameter of D2 Reacting on Cu(111). Phys. Rev.
+Lett. 2012, 108, 236104.
+[100] Perdew, J. P.; Burke, K.; Ernzerhof, M. Generalized
+Gradient Approximation Made Simple. Phys. Rev. Lett.
+1996, 77, 3865–3868.
+[101] Hammer, B.; Hansen, L. B.; Nørskov, J. K. Im-
+proved adsorption energetics within density-functional
+theory using revised Perdew-Burke-Ernzerhof function-
+als. Phys. Rev. B 1999, 59, 7413–7421.
+[102] Blum, V.; Gehrke, R.; Hanke, F.; Havu, P.; Havu, V.;
+Ren, X.; Reuter, K.; Scheffler, M. Ab initio molecular
+simulations with numeric atom-centered orbitals. Com-
+put. Phys. Commun. 2009, 180, 2175–2196, Number:
+11.
+[103] Henkelman, G.; Uberuaga, B. P.; J´ onsson, H. A climb-
+ing image nudged elastic band method for finding sad-
+dle points and minimum energy paths. J. Chem. Phys.
+2000, 113, 9901–9904.
+[104] Pedregosa, F. et al. Scikit-learn: Machine Learning in
+Python. J. Mach. Learn. Res. 2011, 12, 2825–2830.
+[105] Gardner, J.; Douglas-Gallardo, O. A.; Stark, W. G.;
+Westermayr, J.; Janke, S. M.; Habershon, S.; Mau-
+rer, R. J. NQCDynamics.jl: A Julia Package for Nona-
+diabatic Quantum Classical Molecular Dynamics in the
+Condensed Phase. J. Chem. Phys. 2022, 5.0089436.
+[106] Larkoski, A. J.; Ellis, D. G.; Curtis, L. J. Numerical im-
+plementation of Einstein-Brillouin-Keller quantization
+for arbitrary potentials. Am. J. Phys. 2006, 74, 7.
+[107] Bussi, G.; Donadio, D.; Parrinello, M. Canonical sam-
+pling through velocity rescaling. J. Chem. Phys. 2007,
+126, 014101.
+[108] Sch¨ utt, K. T.; Hessmann, S. S. P.; Gebauer, N. W. A.;
+Lederer, J.; Gastegger, M. SchNetPack 2.0: A neu-
+ral network toolbox for atomistic machine learning. J.
+Chem. Phys. 2023, 158, 144801.
+[109] Michelsen, H. A.; Rettner, C. T.; Auerbach, D. J.;
+Zare, R. N. Effect of rotation on the translational and
+vibrational energy dependence of the dissociative ad-
+sorption of D 2 on Cu(111). J. Chem. Phys. 1993, 98,
+8294–8307.
+[110] Sheng, H. W.; Kramer, M. J.; Cadien, A.; Fujita, T.;
+Chen, M. W. Highly optimized embedded-atom-method
+potentials for fourteen fcc metals. Phys. Rev. B 2011,
+83, 134118.
+[111] Rassoulinejad-Mousavi, S. M.; Zhang, Y. Interatomic
+Potentials Transferability for Molecular Simulations: A
+Comparative Study for Platinum, Gold and Silver. Sci
+Rep 2018, 8, 2424.
+[112] Chmiela, S.; Tkatchenko, A.; Sauceda, H. E.;
+Poltavsky, I.; Sch¨ utt, K. T.; M¨ uller, K.-R. Machine
+learning of accurate energy-conserving molecular force
+fields. Sci. Adv. 2017, 3, e1603015.
+[113] Drautz, R. Atomic cluster expansion for accurate and
+transferable interatomic potentials. Phys. Rev. B 2019,
+99, 014104.
+Supplementary Information to
+”Machine Learning Interatomic Potentials for Reactive Hydrogen Dynamics at Metal
+Surfaces Based on Iterative Refinement of Reaction Probabilities”
+Wojciech G. Stark, 1 Julia Westermayr,1, 2 Oscar A. Douglas-Gallardo, 1, 3
+James Gardner, 1 Scott Habershon, 1 and Reinhard J. Maurer 1, 4, ∗
+1Department of Chemistry, University of Warwick,
+Gibbet Hill Road, Coventry CV4 7AL, United Kingdom
+2Present address: Wilhelm Ostwald Institute for Physical and
+Theoretical Chemistry, University of Leipzig, Leipzig 04103, Germany
+3Present address: Instituto de Ciencias Qu´ ımicas, Facultad de Ciencias,
+Universidad Austral de Chile, Isla Teja, Valdivia 5090000, Chile
+4Department of Physics, University of Warwick,
+Gibbet Hill Road, Coventry CV4 7AL, United Kingdom
+I. STATISTICAL ERRORS EVALUATION
+To calculate the statistical error of the sticking probability evaluation, based on 10,000 trajectories, we chose the
+following approach. First, we established 4 main groups, each containing 10,000 trajectories, and divided them into
+smaller subgroups, containing 500, 1,000, 2,000, and 2,500 trajectories (e.g. the first subgroup contains 20 subgroups
+of 500 trajectories). Next, we calculated sticking probabilities with the subgroups and the variance between them.
+Then we randomly shuffle the initial 10,000 trajectories and repeat the procedure 50 times. That allows us to obtain
+the linear fit of the inverse variance for the 10,000 trajectories (Fig. S1 (left)). Finally, the final error is obtained,
+by calculating the standard deviation. In Fig. S1 (right), we plotted the final sticking probabilities obtained using
+both SchNet and PaiNN models for H 2 (ν=0, J=1) Cu(111) in 925 K with the error bars that include only statistical
+error, without the uncertainties included in the main manuscript. The obtained statistical errors are negligible, unlike
+the model uncertainties received from evaluating the predictions using the committee of 3 models, based on different
+train/test splits.
+0 3000 6000 9000
+Group size
+0
+200,000
+400,000
+600,000
+800,000
+Inverse variance
+inverse variance = 788,844 
+standard deviation = 0.001 13
+0.2 0.4 0.6 0.8 1.0
+Collision energy / eV
+0.0
+0.2
+0.4
+0.6
+Sticking probability
+v=0
+J=1
+SchNet
+PaiNN
+FIG. S1. Statistical error evaluation. The inverse variance of the final group size (10,000) predicted by linear regression
+fitted to four smaller group sizes (500, 1,000, 2,000, and 2,500) for collision energy of 0.6 (left side). Corresponding error bars
+for sticking probabilities predicted at different collision energies for H2 (ν=0, J=1) dissociative adsorption on Cu(111) in 925 K
+(right side).
+∗ r.maurer@warwick.ac.uk
+S1
+i3 
+f32
+i4 
+f64
+i5 
+f128
+i6 
+f256
+i7 
+f512
+i8 
+f1024
+Features and interactions
+0.01
+0.10
+Force RMSE / eV/Å
+SchNet
+PaiNN
+3 4 5 6 7
+Cutoff
+SchNet
+PaiNN
+FIG. S2. Optimization of model parameters. The number of features and interaction blocks (left side) and the cutoff
+distance (right side) for non-equivariant (SchNet) and equivariant (PaiNN) MPNN models, based on the validation force
+RMSEs averaged over all of the cross-validation splits. The error bars represent the standard deviation between the force
+RMSEs obtained for all the splits. Optimization of the number of features and interaction blocks was done with the cutoff
+value of 4 ˚A and optimization of cutoff was done with 512 features and 7 interaction blocks.
+II. MODEL PARAMETER OPTIMIZATION
+We performed an optimization of different model parameters, such as the number of features, the number of
+interaction blocks, and the cutoff distance. The optimization was performed for both SchNet and PaiNN models
+independently.
+On the left side of Fig. S2 the convergence of the number of features and interaction blocks for both models with
+respect to force RMSEs in log-scale is presented. SchNet converges slightly quicker towards the optimal number of
+features and interactions, however, the force errors are considerably higher than what is found with PaiNN. Both
+models converge with respect to the force RMSEs with around 6-7 interaction blocks and 256-512 features. In order
+to obtain reliable and accurate models, despite the slower evaluation times, we have chosen to use 7 interactions and
+512 features in the final models for both codes.
+Overall, the convergence of features and interaction blocks for both models is relatively slow. The models require a
+large number of features to capture many-body interactions well and consequently to provide accurate energies and
+forces. That may be due to the high average coordination of the atoms in the surface slab systems and the different
+surface terminations included in the database.
+The right side of Fig. S2 shows a plot of the force RMSE in the logarithmic scale against the cutoff distance,
+revealing that although PaiNN achieves smoother and quicker convergence, a satisfactory level of convergence can
+already be achieved with a cutoff distance of 4 ˚A with both methods. The quick convergence towards a relatively
+low cutoff distance that allows modeling H 2 molecule dynamics on Cu surfaces indicates that the interaction between
+hydrogen and the surface atoms is well captured by the message passing through 7 layers and not much is to be
+gained by increasing the cutoff beyond the 4 ˚A range. Extending the cutoff further would also come with a significant
+increase in computational cost to evaluate the model.
+III. DATABASE
+The distribution of hydrogen atoms as a function of H-H and H-Cu distance is shown in Fig. S3. The figure shows
+that the distribution of H atoms in our database is very dense for the scattering simulations, all possible distances of
+hydrogen from the surfaces, as well as between the hydrogen atoms, are explored well.
+S2
+FIG. S3. Distribution of hydrogen atoms depicted within H-H and H-Cu distances in our final database The
+distribution includes datapoints from the initial database ( AS 0 ) and following 4 iterations of adaptive sampling ( AS 1-4 ).
+For calculations of H-Cu distance, we assume that Cu is the surface atom closest to the considered H atom. Note that the
+data points added through adaptive sampling (second row) are truncated at the H-H distance of 2.25 ˚A due to the stopping of
+dynamics trajectories.
+IV. MINIMUM ENERGY PATHS
+Minimum energy paths (MEP) were obtained using climbing image nudged elastic bands (CI-NEB) employing DFT,
+SchNet, and PaiNN (Fig. S4). The MEPs obtained with DFT match the MEPs obtained with PaiNN models very
+well, suggesting that barriers are modeled remarkably well by PaiNN models. However, the MEPs generated with
+SchNet confirm the findings shown in Fig. 7, where the PES generated with SchNet is not smooth. The instabilities in
+PES obtained with SchNet cause inaccurate MEP predictions (especially for Cu(110)). The higher number of images
+(50 instead of 20) used with PaiNN code, as opposed to SchNet code, was possible due to the much faster convergence
+of the NEB paths (fewer NEB steps needed to converge).
+V. MODEL ERRORS
+Fig. S5 shows energy and force predictions made with the final SchNet and PaiNN models compared to the reference
+DFT-based results. Energy RMSEs and MAEs correspond to the energy of an entire system, containing 56 atoms in
+H2/Cu structures or 54 atoms in Cu surface-only structures.
+VI. DEPENDENCE OF ENERGY WITH RESPECT TO THE COPPER LATTICE CONSTANT
+The potential energy values obtained for specific lattice constant parameters calculated with DFT, SchNet, and
+PaiNN are shown in Fig. S6. We can clearly observe that energy predictions for different lattice constants are
+excellent. In contrast, the SchNet clearly struggles with the predictions, especially outside of the close range around
+the equilibrium lattice constant.
+S3
+0 2 4
+0.0
+0.2
+0.4
+0.6Energy / eV
+DFT
+SchNet
+PaiNN
+0 2 4 6
+0.2
+0.0
+0.2
+0.4
+0.6
+0 2 4
+Path / Å
+0.0
+0.2
+0.4
+0.6Energy / eV
+0 2 4 6
+Path / Å
+0.6
+0.4
+0.2
+0.0
+0.2
+0.4
+0.6
+FIG. S4. Minimum energy paths obtained using CI-NEB method for H 2 dissociative adsorption on different
+copper surfaces. Potential energy is shown along the reaction path ( ˚A), calculated using DFT ( ×××) and both of the MLIPs
+included in our study: SchNet (orange circles) and PaiNN (grey-blue triangles). Figures that show top-down view of the
+systems at the transition states are included on the respective plots.
+S4
+FIG. S5. Energy (a,b) and force ( c) predictions for H 2/Cu structures using SchNet ( S.a-c) and PaiNN (P.a-c).
+Best final models are compared to the reference (DFT) energies and forces. S.a and P.a show energies predicted for the
+structures with both H 2 and Cu atoms, S.b and P.b show energies predicted for just Cu surface structures. Force predictions
+include all of the structures together. The values of corresponding MAEs and RMSEs for energy (eV) or force (eV/˚A) predictions
+are displayed in the upper left corner of every plot.
+3.5 3.6 3.7 3.8
+a / Å
+0.00
+0.05
+0.10
+0.15
+Energy / eV
+PaiNN
+SchNet
+DFT
+FIG. S6. Relative potential energies of the Cu atoms for a set of lattice constants a ( ˚A). Energies were calculated
+using a DFT code (red data points) and two MLIPs included in our study, namely, SchNet (blue, dashed line) and PaiNN
+(black, solid line).
+S5

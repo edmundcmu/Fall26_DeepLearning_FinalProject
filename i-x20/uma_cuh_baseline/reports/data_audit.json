@@ -1,0 +1,114 @@
+{
+  "source_sha256": "d4346a959558077447bdfefdcaaf66f761190ef29ad81898e6ff61a173b02a09",
+  "n_configurations": 4220,
+  "composition_counts": {
+    "H2Cu54": 2535,
+    "Cu54": 1685
+  },
+  "single_H_configurations": 0,
+  "exact_duplicates_removed": 3,
+  "n_unique_configurations": 4217,
+  "cell_family_count": 4,
+  "force_labels": "all stored atoms; no constraints/mobility metadata supplied",
+  "metadata_keys": [
+    "config_type"
+  ],
+  "cell_families": [
+    {
+      "cell": [
+        7.748759,
+        0.0,
+        0.0,
+        3.874379,
+        6.710622,
+        0.0,
+        0.0,
+        0.0,
+        50.544725
+      ],
+      "n": 1035,
+      "composition_counts": {
+        "H2Cu54": 601,
+        "Cu54": 434
+      }
+    },
+    {
+      "cell": [
+        7.748759,
+        0.0,
+        0.0,
+        0.0,
+        7.748759,
+        0.0,
+        0.0,
+        0.0,
+        49.132
+      ],
+      "n": 1074,
+      "composition_counts": {
+        "H2Cu54": 612,
+        "Cu54": 462
+      }
+    },
+    {
+      "cell": [
+        10.9584,
+        0.0,
+        0.0,
+        0.0,
+        7.748759,
+        0.0,
+        0.0,
+        0.0,
+        46.457299
+      ],
+      "n": 1176,
+      "composition_counts": {
+        "H2Cu54": 721,
+        "Cu54": 455
+      }
+    },
+    {
+      "cell": [
+        6.326835,
+        0.0,
+        0.0,
+        0.0,
+        7.748759,
+        0.0,
+        0.0,
+        0.0,
+        52.67562
+      ],
+      "n": 932,
+      "composition_counts": {
+        "H2Cu54": 598,
+        "Cu54": 334
+      }
+    }
+  ],
+  "splits": {
+    "train": {
+      "n": 500,
+      "composition_counts": {
+        "H2Cu54": 296,
+        "Cu54": 204
+      }
+    },
+    "val": {
+      "n": 100,
+      "composition_counts": {
+        "H2Cu54": 64,
+        "Cu54": 36
+      }
+    },
+    "test": {
+      "n": 200,
+      "composition_counts": {
+        "H2Cu54": 116,
+        "Cu54": 84
+      }
+    }
+  },
+  "prepared_manifest_sha256": "29080653645bf88b222d6421b65049df909adf344a8afc7fa90e878f3c736d8e"
+}

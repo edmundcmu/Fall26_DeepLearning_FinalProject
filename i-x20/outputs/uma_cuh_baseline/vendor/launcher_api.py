@@ -1,0 +1,234 @@
+"""
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+This source code is licensed under the MIT license found in the
+LICENSE file in the root directory of this source tree.
+"""
+
+from __future__ import annotations
+
+import os
+import tempfile
+import uuid
+import warnings
+from dataclasses import dataclass, field, replace
+from typing import Optional
+
+import clusterscope
+
+from fairchem.core.common.gp_utils import GraphParallelConfig
+from fairchem.core.common.utils import (
+    StrEnum,
+    get_commit_hash,
+    get_timestamp_uid,
+)
+
+ALLOWED_TOP_LEVEL_KEYS = {"job", "runner", "reducer"}
+
+LOG_DIR_NAME = "logs"
+CHECKPOINT_DIR_NAME = "checkpoints"
+RESULTS_DIR = "results"
+CONFIG_FILE_NAME = "canonical_config.yaml"
+PREEMPTION_STATE_DIR_NAME = "preemption_state"
+
+
+class SchedulerType(StrEnum):
+    LOCAL = "local"
+    SLURM = "slurm"
+
+
+class DeviceType(StrEnum):
+    CPU = "cpu"
+    CUDA = "cuda"
+
+
+class RunType(StrEnum):
+    RUN = "run"
+    REDUCE = "reduce"
+
+
+class DistributedInitMethod(StrEnum):
+    TCP = "tcp"
+    FILE = "file"
+
+
+@dataclass
+class SlurmConfig:
+    mem_gb: int = 80
+    timeout_hr: int = 168
+    cpus_per_task: int = 8
+    partition: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    qos: Optional[str] = None  # omegaconf in python 3.9 does not backport annotations
+    account: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    additional_parameters: Optional[dict] = None
+
+
+@dataclass
+class RayMetricsConfig:
+    # Opt-in: start Prometheus + Grafana on the Ray head so the dashboard
+    # "Metrics" tab shows resource/training metrics. Off by default.
+    enabled: bool = False
+    # Explicit opt-in to download missing Prometheus/Grafana binaries from the
+    # internet on the head node. Never happens unless set to True.
+    auto_download: bool = False
+    # Binary discovery: None -> search PATH. Set to override with an explicit path.
+    prometheus_binary: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    grafana_binary: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # Grafana needs its install "homepath" (dir containing public/, conf/).
+    # None -> auto-detect from the binary / conda / system locations.
+    grafana_homepath: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # Ports: None -> auto-assign a free port. Pin for stable SSH tunnels.
+    prometheus_port: Optional[int] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    grafana_port: Optional[int] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # Browser-facing Grafana URL for the dashboard's embedded iframes
+    # (RAY_GRAFANA_IFRAME_HOST). None -> http://localhost:<grafana_port>.
+    grafana_iframe_host: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    prometheus_retention: str = "15d"
+    scrape_interval: str = "5s"
+
+
+@dataclass
+class RayClusterConfig:
+    head_gpus: int = 0
+    metrics: RayMetricsConfig = field(default_factory=lambda: RayMetricsConfig())
+
+
+@dataclass
+class SchedulerConfig:
+    mode: SchedulerType = SchedulerType.LOCAL
+    distributed_init_method: DistributedInitMethod = DistributedInitMethod.TCP
+    ranks_per_node: int = 1
+    num_nodes: int = 1
+    num_array_jobs: int = 1
+    slurm: SlurmConfig = field(default_factory=lambda: SlurmConfig())
+    # if not None, will launch a ray cluster on slurm instead of using submitit directly to launch the job
+    use_ray: bool = False
+    ray_cluster: RayClusterConfig = field(default_factory=lambda: RayClusterConfig())
+
+
+@dataclass
+class SlurmEnv:
+    # reflects the job_id given by submitit (slurm id with array job id and array task id if they exist)
+    job_id: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # reflects SLURM_JOB_ID only
+    raw_job_id: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # SLURM_ARRAY_JOB_ID
+    array_job_id: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # SLURM_ARRAY_TASK_ID
+    array_task_id: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # reflects SLURM_RESTART_COUNT env variable
+    restart_count: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+
+
+@dataclass
+class Metadata:
+    # read-only metadata about the job, not user inputs
+    commit: str
+    log_dir: str
+    checkpoint_dir: str
+    results_dir: str
+    config_path: str
+    preemption_checkpoint_dir: str
+    cluster_name: str
+    array_job_num: int = 0
+    slurm_env: SlurmEnv = field(default_factory=lambda: SlurmEnv())
+
+
+@dataclass
+class JobConfig:
+    run_name: str = field(
+        default_factory=lambda: get_timestamp_uid() + uuid.uuid4().hex.upper()[0:4]
+    )
+    timestamp_id: str = field(default_factory=lambda: get_timestamp_uid())
+    run_dir: str = field(default_factory=lambda: tempfile.TemporaryDirectory().name)
+    device_type: DeviceType = DeviceType.CUDA
+    debug: bool = False
+    scheduler: SchedulerConfig = field(default_factory=lambda: SchedulerConfig)
+    logger: Optional[dict] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    seed: int = 0
+    deterministic: bool = False
+    runner_state_path: Optional[str] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # read-only metadata about the job, not user inputs
+    metadata: Optional[Metadata] = (
+        None  # omegaconf in python 3.9 does not backport annotations
+    )
+    # Deprecated: use graph_parallel instead
+    graph_parallel_group_size: Optional[int] = None
+    graph_parallel: GraphParallelConfig = field(
+        default_factory=lambda: GraphParallelConfig()
+    )
+    # disable this if you want to lazily instantiate the runner later (for example: have a worker perform the instantiation after distributed env setup in SPMDWorker)
+    recursive_instantiate_runner: bool = True
+
+    def __post_init__(self) -> None:
+        self.run_dir = os.path.abspath(self.run_dir)
+        if self.graph_parallel_group_size is not None:
+            if (
+                self.graph_parallel.group_size > 1
+                and self.graph_parallel.group_size != self.graph_parallel_group_size
+            ):
+                raise ValueError(
+                    "Cannot specify both graph_parallel_group_size and "
+                    "graph_parallel.group_size with different values. Use graph_parallel only."
+                )
+            if self.graph_parallel.group_size <= 1:
+                warnings.warn(
+                    "graph_parallel_group_size is deprecated, use graph_parallel instead",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+                self.graph_parallel = replace(
+                    self.graph_parallel,
+                    group_size=self.graph_parallel_group_size,
+                )
+
+        try:
+            cluster = clusterscope.cluster()
+        except RuntimeError:
+            cluster = ""
+        self.metadata = Metadata(
+            commit=get_commit_hash(),
+            log_dir=os.path.join(self.run_dir, self.timestamp_id, LOG_DIR_NAME),
+            checkpoint_dir=os.path.join(
+                self.run_dir, self.timestamp_id, CHECKPOINT_DIR_NAME
+            ),
+            results_dir=os.path.join(self.run_dir, self.timestamp_id, RESULTS_DIR),
+            config_path=os.path.join(self.run_dir, self.timestamp_id, CONFIG_FILE_NAME),
+            preemption_checkpoint_dir=os.path.join(
+                self.run_dir,
+                self.timestamp_id,
+                CHECKPOINT_DIR_NAME,
+                PREEMPTION_STATE_DIR_NAME,
+            ),
+            cluster_name=cluster,
+        )
