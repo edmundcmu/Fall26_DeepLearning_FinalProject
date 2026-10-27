@@ -1,0 +1,9 @@
+fairchem-core
+ase
+pandas
+pyarrow
+numpy
+scipy
+matplotlib
+huggingface_hub
+jupyterlab
