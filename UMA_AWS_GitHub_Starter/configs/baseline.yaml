@@ -1,1 +1,14 @@
+model:
+  name: uma-m-1p1
+  task: oc20
 
+dataset:
+  name: reactive_hydrogen_ACS_2023
+  elements: [Cu, H]
+
+evaluation:
+  calibration_samples: 12
+  test_samples: 30
+
+experiment:
+  seed: 17
