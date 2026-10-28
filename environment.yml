@@ -1,0 +1,14 @@
+# Shared installation specification for macOS and Linux.
+# Platform-specific dependencies are resolved during installation.
+# Linux GPU use also requires a compatible NVIDIA driver and CUDA-enabled PyTorch.
+# This specification has not yet been recreated and validated on both platforms.
+name: uma
+
+channels:
+  - defaults
+
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - fairchem-core==2.24.0
