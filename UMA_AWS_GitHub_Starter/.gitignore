@@ -1,1 +1,14 @@
+*.pt
+*.pth
+*.ckpt
 
+*.parquet
+*.lmdb
+
+.venv/
+data/
+outputs/
+runs/
+
+.env
+.env.*
