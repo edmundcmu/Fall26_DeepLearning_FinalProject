@@ -1,0 +1,51 @@
+# Locked protocol for FA-JOINT adapter selection (IDL.pdf §3.3, §4).
+# Every TBD must be agreed by the team and frozen BEFORE any probe response or
+# selection score is inspected; changing a value afterwards invalidates the comparison.
+
+data:
+  prepared_dir: i-x20/uma_cuh_baseline/data/prepared   # IDL §3.2 cell-family split (500/100/200)
+  split_seed: TBD               # selector-dev / checkpoint-val / probe-pool sampling
+  n_selector_dev: 50            # IDL §3.2
+  n_checkpoint_val: 50          # IDL §3.2
+  n_probe_pool: 40              # IDL §4.1: 30-50 training configurations
+
+model:
+  checkpoint: uma-m-1p1         # IDL §5.2
+  task: oc20
+
+objective:                      # IDL Eq. (2)
+  w_energy: 0.10
+  w_force_h: 0.45
+  w_force_cu: 0.45
+  scale_statistic: TBD          # rms | std of U0 residuals on the training subset
+  no_h_batch_policy: TBD        # renormalize | skip_term (Cu54 frames contain no H)
+
+adapters:                       # owned by the adapter lead; listed because selection depends on them
+  rank: 2                       # IDL §4.1
+  so3_lora_per_l: TBD
+  mole_lora_location: TBD       # output | per_expert
+
+probe:
+  steps: TBD                    # IDL §4.1: 20-50 updates
+  relative_update_cap: TBD      # kappa in ||B A||_F / ||W||_F <= kappa
+  seeds: [TBD, TBD]             # second seed = probe-stability check (IDL §4.3)
+  optimizer: TBD
+  lr: TBD
+  batch_size: TBD
+
+selection:
+  parameter_budget: TBD         # trainable parameters, shared by every method
+  ridge_lambda: TBD
+  stop_policy: TBD              # fill_budget | positive_gain
+  force_gradient_score: TBD     # e.g. sum of squared Frobenius norms of dL_F/dB
+  force_gradient_cost_normalized: TBD
+  random_mask_seed: TBD
+  n_random_masks: 3             # one predeclared mask per paired repeat (IDL §4.3)
+
+final_training:
+  max_updates: 2000             # IDL §4.3; any increase to 4000 is decided before the suite
+  repeat_seeds: [TBD, TBD, TBD] # three paired repeats
+  checkpoint_every: TBD
+  optimizer: TBD
+  lr: TBD
+  batch_size: TBD
