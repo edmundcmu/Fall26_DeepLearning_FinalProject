@@ -1,0 +1,65 @@
+{
+  "model": "training-composition-mean energy; zero force; NOT UMA/MACE",
+  "train_energy_means_eV": {
+    "H2Cu54": -166.76202004098937,
+    "Cu54": -161.48738212033183
+  },
+  "val": {
+    "n_configurations": 100,
+    "forces": {
+      "H": {
+        "n_atoms": 128,
+        "n_components": 384,
+        "mae_eV_per_A": 1.0915114443489584,
+        "rmse_eV_per_A": 1.6843468175965148,
+        "configuration_mean_mae_eV_per_A": 1.0915114443489582
+      },
+      "Cu": {
+        "n_atoms": 5400,
+        "n_components": 16200,
+        "mae_eV_per_A": 0.3050094489771605,
+        "rmse_eV_per_A": 0.44138034870781795,
+        "configuration_mean_mae_eV_per_A": 0.3050094489771605
+      },
+      "all": {
+        "n_atoms": 5528,
+        "n_components": 16584,
+        "mae_eV_per_A": 0.32322078316811387,
+        "rmse_eV_per_A": 0.5059609940225192,
+        "configuration_mean_mae_eV_per_A": 0.3233412724289462
+      }
+    },
+    "raw_energy_mae_eV_per_configuration": 4.049624075438287,
+    "raw_energy_rmse_eV_per_configuration": 4.2118115469585975,
+    "raw_energy_mae_eV_per_atom": 0.07334080580529141
+  },
+  "test": {
+    "n_configurations": 200,
+    "forces": {
+      "H": {
+        "n_atoms": 232,
+        "n_components": 696,
+        "mae_eV_per_A": 1.945691704353448,
+        "rmse_eV_per_A": 3.5025764157401595,
+        "configuration_mean_mae_eV_per_A": 1.9456917043534485
+      },
+      "Cu": {
+        "n_atoms": 10800,
+        "n_components": 32400,
+        "mae_eV_per_A": 0.23083489627901235,
+        "rmse_eV_per_A": 0.41918898817511074,
+        "configuration_mean_mae_eV_per_A": 0.2308348962790123
+      },
+      "all": {
+        "n_atoms": 11032,
+        "n_components": 33096,
+        "mae_eV_per_A": 0.26689787483895333,
+        "rmse_eV_per_A": 0.6557573468305075,
+        "configuration_mean_mae_eV_per_A": 0.26726221558281527
+      }
+    },
+    "raw_energy_mae_eV_per_configuration": 5.2861535629256675,
+    "raw_energy_rmse_eV_per_configuration": 5.42593237291834,
+    "raw_energy_mae_eV_per_atom": 0.09590445189628499
+  }
+}

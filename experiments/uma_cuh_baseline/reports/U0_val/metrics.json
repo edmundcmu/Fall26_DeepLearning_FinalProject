@@ -1,0 +1,51 @@
+{
+  "n_configurations": 100,
+  "forces": {
+    "H": {
+      "n_atoms": 128,
+      "n_components": 384,
+      "mae_eV_per_A": 0.03265178506743674,
+      "rmse_eV_per_A": 0.045505245684909094,
+      "configuration_mean_mae_eV_per_A": 0.03265178506743674
+    },
+    "Cu": {
+      "n_atoms": 5400,
+      "n_components": 16200,
+      "mae_eV_per_A": 0.019782718582565854,
+      "rmse_eV_per_A": 0.03434698770137056,
+      "configuration_mean_mae_eV_per_A": 0.01978271858256585
+    },
+    "all": {
+      "n_atoms": 5528,
+      "n_components": 16584,
+      "mae_eV_per_A": 0.020080699861520897,
+      "rmse_eV_per_A": 0.03464602152446291,
+      "configuration_mean_mae_eV_per_A": 0.02007049094884607
+    }
+  },
+  "raw_energy_mae_eV_per_configuration": 1.3908700647446293,
+  "raw_energy_rmse_eV_per_configuration": 1.5719849238405172,
+  "raw_energy_mae_eV_per_atom": 0.024937432375187914,
+  "train_offset_aligned_energy_mae_eV_per_configuration": 0.541098167203962,
+  "train_offset_aligned_energy_rmse_eV_per_configuration": 0.549230189119861,
+  "label": "U0",
+  "split": "val",
+  "model_checkpoint": "/home/ubuntu/uma_cuh_baseline/checkpoints/checkpoints/uma-m-1p1.pt",
+  "checkpoint_sha256": "c30034edbf2e127f703f814cacb632661767da99b3e71c5b2ee5290510a52d68",
+  "task": "oc20",
+  "inference_settings": "traineval",
+  "split_manifest_sha256": "29080653645bf88b222d6421b65049df909adf344a8afc7fa90e878f3c736d8e",
+  "energy_offsets_fit_on_train_eV": {
+    "H2Cu54": -2.4636511054404675,
+    "Cu54": -0.14283199474562358
+  },
+  "elapsed_prediction_seconds_including_train_calibration": 80.22550629899979,
+  "device": "cuda",
+  "force_mask": "all stored atoms; mobility metadata unavailable",
+  "fairchem_version": "2.24.0",
+  "torch_version": "2.13.0+cu130",
+  "cuda_device": "NVIDIA L40S",
+  "peak_gpu_allocated_bytes": 9758734336,
+  "selection_record_sha256": null,
+  "status": "measured inference; not proof of diffusion/MD accuracy"
+}

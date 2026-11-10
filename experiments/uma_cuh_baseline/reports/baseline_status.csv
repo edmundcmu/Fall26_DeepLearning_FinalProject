@@ -1,0 +1,4 @@
+method,split,status,H_force_MAE_eV_A,Cu_force_MAE_eV_A,energy_MAE_eV_configuration,aligned_energy_MAE_eV_configuration,source
+U0,not evaluated,NOT RUN,,,,,
+full-transfer-seed41,not evaluated,NOT RUN,,,,,
+Zero-force / train-composition-mean energy (NOT MLIP),val,CPU sanity reference only,1.0915114443489584,0.3050094489771605,4.049624075438287,,reports/sanity_reference.json

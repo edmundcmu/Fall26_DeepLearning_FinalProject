@@ -1,0 +1,15 @@
+{
+  "data_repository": "https://github.com/wgst/ml-gas-surface",
+  "data_commit": "72db5df1f152c86afa4de98af628b1a67268445b",
+  "data_path": "databases/h2cu/pes/h2cu_20220529_as4_forces_red_clr20240208_e0.xyz",
+  "data_sha256": "d4346a959558077447bdfefdcaaf66f761190ef29ad81898e6ff61a173b02a09",
+  "fairchem_commit": "645af7d03e91138ef07e51de387316c9e2e152dc",
+  "hf_repository": "facebook/UMA",
+  "hf_revision": "c5107e43d5e811dd7cb56f57533dc0eb550dee6b",
+  "model": "uma-m-1p1",
+  "model_path": "checkpoints/uma-m-1p1.pt",
+  "task": "oc20",
+  "reference_method": "SRP48 (52% PBE + 48% RPBE), FHI-aims; retain supplied energy convention",
+  "physical_scope": "Cu/H energy-and-force transfer; NOT isolated-H diffusion",
+  "upstream_paper": "https://doi.org/10.1021/acs.jpcc.3c06648"
+}
