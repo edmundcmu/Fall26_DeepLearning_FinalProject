@@ -1,0 +1,57 @@
+{
+  "evaluation_split": "val",
+  "n_val": 100,
+  "H_containing_frames": 64,
+  "Cu_only_frames": 36,
+  "raw_total_energy_mae_eV_per_config": 1.3908700647446293,
+  "train_aligned_total_energy_mae_eV_per_config": 0.5410981672039665,
+  "force_H_component_mae_eV_per_A": 0.03265178506743674,
+  "force_Cu_component_mae_eV_per_A": 0.019782718582565854,
+  "H_force_mae_per_frame_median": 0.026373993340713386,
+  "H_force_mae_per_frame_p90": 0.06614315070977529,
+  "H_force_mae_top10_share_of_total_H_error": 0.36472983064372666,
+  "H_H_distance_vs_H_mae_pearson": -0.2405485300071603,
+  "H_Cu_distance_vs_H_mae_pearson": -0.14685137942698567,
+  "H_bond_distance_bins_A": {
+    "<0.9": {
+      "n": 35,
+      "mean_H_component_mae_eV_per_A": 0.03844925320777188
+    },
+    "0.9\u20131.6": {
+      "n": 16,
+      "mean_H_component_mae_eV_per_A": 0.024625606353699127
+    },
+    "\u22651.6": {
+      "n": 13,
+      "mean_H_component_mae_eV_per_A": 0.02692159079882685
+    }
+  },
+  "composition": {
+    "H2Cu54": {
+      "n": 64,
+      "raw_E_MAE_eV": 1.9358813461960866,
+      "aligned_E_MAE_eV": 0.5277697592443897,
+      "raw_E_mean_signed_error_eV": -1.9358813461960866,
+      "aligned_E_mean_signed_error_eV": 0.5277697592443897,
+      "raw_E_residual_std_eV": 0.10091984178563958,
+      "pair_count": 2016,
+      "pairwise_deltaE_MAE_eV": 0.11224407623368092,
+      "pairwise_deltaE_RMSE_eV": 0.14385046532925555,
+      "pairwise_deltaE_pearson_correlation": 0.9952483741804833
+    },
+    "Cu54": {
+      "n": 36,
+      "raw_E_MAE_eV": 0.42196111994203833,
+      "aligned_E_MAE_eV": 0.5647931146876586,
+      "raw_E_mean_signed_error_eV": 0.42196111994203833,
+      "aligned_E_mean_signed_error_eV": 0.5647931146876586,
+      "raw_E_residual_std_eV": 0.07513833361509373,
+      "pair_count": 630,
+      "pairwise_deltaE_MAE_eV": 0.08787943640859339,
+      "pairwise_deltaE_RMSE_eV": 0.10776898319336664,
+      "pairwise_deltaE_pearson_correlation": 0.9971469822326053
+    }
+  },
+  "relative_energy_definition": "All unordered pairs of distinct validation configurations WITHIN each composition, \u0394E=E_B-E_A; pairs share configurations and are NOT independent observations",
+  "geometry_definition": "H-H distance and closest H-Cu distance use minimum-image convention on the stored periodic cell"
+}
