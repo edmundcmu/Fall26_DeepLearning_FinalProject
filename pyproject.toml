@@ -1,0 +1,4 @@
+# Test settings only; the code under src/ is run with PYTHONPATH=src, not installed.
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

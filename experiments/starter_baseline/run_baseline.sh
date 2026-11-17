@@ -12,7 +12,7 @@ export MPLBACKEND=Agg
   cd "$ROOT"
   echo "git_commit=$SHA"
   python -c 'import torch, fairchem.core; print("torch:", torch.__version__, "cuda:", torch.cuda.is_available())'
-  python scripts/uma_cuh_uma_m_baseline.py --workdir "$RUN_DIR" --calibration 12 --test 30
+  python experiments/starter_baseline/uma_cuh_uma_m_baseline.py --workdir "$RUN_DIR" --calibration 12 --test 30
 ) 2>&1 | tee "$RUN_DIR/baseline.log"
 printf '%s\n' "$SHA" > "$RUN_DIR/git_commit.txt"
 python -m pip freeze > "$RUN_DIR/pip_freeze.txt"

@@ -1,6 +1,6 @@
-"""What the selector code needs from adapters.py, plus a CPU stand-in.
+"""What the selector code needs from the adapters, plus a CPU stand-in.
 
-PSEUDOCODE: a proposed contract to agree with the adapter lead. adapters.LoRAModel
+PSEUDOCODE: a proposed contract to agree with the adapter lead. LoRA.model.LoRAModel
 implements every method except predict; predict (fairchem batching plus
 F = -dE/dR) is still to be added. FakeAdaptedUMA lets probes, training and
 selection be tested on CPU before the real model is wired in.

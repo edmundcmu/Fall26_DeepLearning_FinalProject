@@ -20,7 +20,7 @@ objective:                      # IDL Eq. (2)
   scale_statistic: TBD          # rms | std of U0 residuals on the training subset
   no_h_batch_policy: TBD        # renormalize | skip_term (Cu54 frames contain no H)
 
-adapters:                       # read by scripts/adapters.py (LoRAConfig.from_yaml)
+adapters:                       # read by src/main/LoRA (LoRAConfig.from_yaml)
   rank: 2                       # IDL §4.1
   alpha: null                   # scaling = alpha / rank; null keeps IDL Eq. (3): W + B A
   dropout: 0.0                  # only ever applied at invariant-input sites (radial / scalar MLPs)
@@ -29,7 +29,7 @@ adapters:                       # read by scripts/adapters.py (LoRAConfig.from_y
                                 # MoLE sites get an output-level update shared by all experts.
   # Proposed groups: role x depth. R = radial MLP (pair/distance strength), S = SO(2)
   # convolutions (sigma/pi/delta channel coupling), A = atom-wise update. Assumes 10 blocks;
-  # check with `python scripts/adapters.py --checkpoint <uma-m-1p1.pt>`, which lists every
+  # check with `PYTHONPATH=src python -m main.LoRA --checkpoint <uma-m-1p1.pt>`, which lists every
   # site per group and any legal site left in no group. Lock before probes.
   groups:
     R_early: ['(^|\.)blocks\.[0-4]\.edge_wise\.so2_conv_1\.rad_func\.net\.\d+$']

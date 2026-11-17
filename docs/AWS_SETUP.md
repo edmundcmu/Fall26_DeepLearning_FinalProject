@@ -4,10 +4,10 @@ This starter includes the existing UMA-M Cu/H zero-shot baseline script; its GPU
 
 ## Suggested repository contents
 
-- `scripts/uma_cuh_uma_m_baseline.py`: raw DFT vs unadapted UMA-M baseline, outputs MAE and plots.
-- `scripts/run_baseline.sh`: runs and logs a baseline from a pinned Git SHA, optional S3 upload.
+- `experiments/starter_baseline/uma_cuh_uma_m_baseline.py`: raw DFT vs unadapted UMA-M baseline, outputs MAE and plots.
+- `experiments/starter_baseline/run_baseline.sh`: runs and logs a baseline from a pinned Git SHA, optional S3 upload.
 - `aws/deploy.sh`: creates immutable versioned Git worktrees; does **not** start a GPU experiment.
-- `.github/workflows/sync-aws.yml`: AWS Systems Manager command on each approved push to `main`.
+- `aws/sync-aws.yml`: AWS Systems Manager command on each approved push to `main`. Currently an empty placeholder; GitHub only runs it once it is written and moved to `.github/workflows/` at the repository root.
 - `requirements-extras.txt`: helper dependencies; **pin installed versions after validation**.
 
 ## One-time AWS setup
@@ -74,8 +74,8 @@ Every merged push to `main` now creates `/home/ubuntu/uma-releases/<commit>` and
 ```bash
 # On AWS as ubuntu; activate working Python/Conda environment first
 cd /home/ubuntu/uma-current
-python scripts/uma_cuh_uma_m_baseline.py --inspect-only
-bash scripts/run_baseline.sh
+python experiments/starter_baseline/uma_cuh_uma_m_baseline.py --inspect-only
+bash experiments/starter_baseline/run_baseline.sh
 # Optional, before run: export S3_RESULTS_URI=s3://YOUR_PRIVATE_BUCKET/uma-results
 ```
 
