@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-23",
+  "data_download": "completed; pinned SHA-256 verified",
+  "audit_and_preparation": "completed on actual dataset",
+  "label_roundtrip": "passed: species, coordinates, cell, energy and raw forces",
+  "pytest": "5 passed in 9.75s",
+  "python_syntax": "all scripts/tests compile successfully",
+  "shell_syntax": "setup_gpu.sh passed bash -n",
+  "gpu_installation": "not executed",
+  "uma_weights": "not downloaded; unauthenticated HF request returned HTTP 401",
+  "uma_inference": "not executed",
+  "uma_training": "not executed",
+  "gpu_training_code_validation": "source-inspected and syntax-checked, not runtime-tested",
+  "remaining_external_requirements": ["approved Hugging Face UMA access", "Linux CUDA environment", "GPU acceptance run"]
+}

@@ -1,0 +1,5 @@
+ase==3.26.0
+numpy>=2.0,<2.5
+scipy>=1.15
+PyYAML==6.0.2
+pytest>=8,<9
