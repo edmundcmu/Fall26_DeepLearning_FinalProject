@@ -1,4 +1,4 @@
-"""Tests for main.LoRA on a tiny randomly initialized UMA MoE backbone.
+"""Tests for src.LoRA on a tiny randomly initialized UMA MoE backbone.
 
 Skipped when fairchem is not installed.
 """
@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from main.LoRA import LoRAConfig, LoRAModel
+from src.LoRA import LoRAConfig, LoRAModel
 
 pytest.importorskip("fairchem.core")
 

@@ -1,6 +1,6 @@
 """List the sites each adapter group captures in a UMA checkpoint.
 
-    PYTHONPATH=src python -m main.LoRA --checkpoint <uma-m-1p1.pt>
+    python -m src.LoRA --checkpoint <uma-m-1p1.pt>
 """
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ from .config import LoRAConfig
 from .model import LoRAModel
 from .uma import load_uma_model
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="python -m main.LoRA", description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(prog="python -m src.LoRA", description=__doc__.splitlines()[0])
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--config", type=Path, default=REPO_ROOT / "configs/adapter_selection.yaml")
     parser.add_argument("--device", default="cpu")

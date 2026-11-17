@@ -13,7 +13,7 @@ conda activate uma
 ## Repository layout
 
 ```
-src/main/                 FA-JOINT pipeline (run with PYTHONPATH=src)
+src/                      FA-JOINT pipeline (run from the repo root: python -m src.<module>)
   data.py  objective.py  probes.py  selection.py  train.py  evaluate.py
   LoRA/                   LoRA adapters: config, sites, layers, model, uma, interface
   utils/                  seeding, device and numeric settings
@@ -27,5 +27,5 @@ aws/                      deployment scripts for the shared EC2 instance
 List the sites each adapter group captures in a UMA checkpoint:
 
 ```bash
-PYTHONPATH=src python -m main.LoRA --checkpoint <uma-m-1p1.pt>
+python -m src.LoRA --checkpoint <uma-m-1p1.pt>
 ```

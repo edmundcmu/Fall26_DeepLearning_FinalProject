@@ -1,4 +1,4 @@
-"""Tests for main.LoRA on small stand-ins with the same forward as fairchem's
+"""Tests for src.LoRA on small stand-ins with the same forward as fairchem's
 SO3_Linear and MOLE. Needs only PyTorch; test_lora_uma.py covers a real tiny UMA.
 """
 import math
@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from main.LoRA import LoRAConfig, LoRALinear, LoRAModel, match_sites
+from src.LoRA import LoRAConfig, LoRALinear, LoRAModel, match_sites
 
 ROOT = Path(__file__).resolve().parents[2]
 
