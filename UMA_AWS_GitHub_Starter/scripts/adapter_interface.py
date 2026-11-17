@@ -1,8 +1,9 @@
 """What the selector code needs from adapters.py, plus a CPU stand-in.
 
-PSEUDOCODE: a proposed contract to agree with the adapter lead; adapters.py
-implements the real class. FakeAdaptedUMA lets probes, training and selection
-be tested on CPU before real UMA adapters exist.
+PSEUDOCODE: a proposed contract to agree with the adapter lead. adapters.LoRAModel
+implements every method except predict; predict (fairchem batching plus
+F = -dE/dR) is still to be added. FakeAdaptedUMA lets probes, training and
+selection be tested on CPU before the real model is wired in.
 """
 from __future__ import annotations
 

@@ -20,10 +20,24 @@ objective:                      # IDL Eq. (2)
   scale_statistic: TBD          # rms | std of U0 residuals on the training subset
   no_h_batch_policy: TBD        # renormalize | skip_term (Cu54 frames contain no H)
 
-adapters:                       # owned by the adapter lead; listed because selection depends on them
+adapters:                       # read by scripts/adapters.py (LoRAConfig.from_yaml)
   rank: 2                       # IDL §4.1
-  so3_lora_per_l: TBD
-  mole_lora_location: TBD       # output | per_expert
+  alpha: null                   # scaling = alpha / rank; null keeps IDL Eq. (3): W + B A
+  dropout: 0.0                  # only ever applied at invariant-input sites (radial / scalar MLPs)
+  so3_per_l: true               # proposed: one (A, B) pair per degree l; lock before probes
+  group_ranks: {}               # optional per-group rank override, e.g. to equalize budgets
+                                # MoLE sites get an output-level update shared by all experts.
+  # Proposed groups: role x depth. R = radial MLP (pair/distance strength), S = SO(2)
+  # convolutions (sigma/pi/delta channel coupling), A = atom-wise update. Assumes 10 blocks;
+  # check with `python scripts/adapters.py --checkpoint <uma-m-1p1.pt>`, which lists every
+  # site per group and any legal site left in no group. Lock before probes.
+  groups:
+    R_early: ['(^|\.)blocks\.[0-4]\.edge_wise\.so2_conv_1\.rad_func\.net\.\d+$']
+    R_late:  ['(^|\.)blocks\.[5-9]\.edge_wise\.so2_conv_1\.rad_func\.net\.\d+$']
+    S_early: ['(^|\.)blocks\.[0-4]\.edge_wise\.so2_conv_[12]\.(fc_m0|so2_m_conv\.\d+\.fc)$']
+    S_late:  ['(^|\.)blocks\.[5-9]\.edge_wise\.so2_conv_[12]\.(fc_m0|so2_m_conv\.\d+\.fc)$']
+    A_early: ['(^|\.)blocks\.[0-4]\.atom_wise\.(scalar_mlp\.\d+|so3_linear_[12]|grid_mlp\.\d+)$']
+    A_late:  ['(^|\.)blocks\.[5-9]\.atom_wise\.(scalar_mlp\.\d+|so3_linear_[12]|grid_mlp\.\d+)$']
 
 probe:
   steps: TBD                    # IDL §4.1: 20-50 updates
