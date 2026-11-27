@@ -1,44 +1,53 @@
-# Random LoRA preliminary run
+# Three Random LoRA adapter selections
 
-This package records one random adapter selection and a validation comparison with U0 and full candidate-group LoRA for UMA-M-1.1 on Cu/H. The random mask and common parameter budget were not fixed in the original protocol, so this is a preliminary run rather than a completed three-mask study.
+Three random adapter masks were trained from frozen UMA-M-1.1 and evaluated on the same 100-frame validation set. The common budget is an upper bound of 171,520 trainable parameters, equal to 50% of the six-group Full LoRA budget. Seed 42 uses fewer parameters because of the discrete group costs. All three training runs and their validation evaluations completed successfully.
 
-## Selection and training
+## How the masks were selected
 
-- Budget: 171,520 parameters, or 50% of the full candidate-group LoRA count of 343,040.
-- Sampling: enumerate all 11 inclusion-maximal nonempty subsets whose cost is at most the budget, in the order defined by `selection.py`, then select uniformly with Python `random.Random(41).choice`. Inclusion-maximal means no omitted group can be added without exceeding the budget.
-- Selected groups: R_late, S_late, A_early. Their respective costs are 39,680, 99,840 and 32,000, totaling 171,520.
-- Training seed: 41. Rank: 2. Starting point: frozen UMA-M-1.1 checkpoint, with newly initialized adapters. Full LoRA adapter weights were not loaded.
-- Training: 500 structures, batch size 1, 2,000 updates, AdamW, learning rate 0.0001, weight decay 0.001. Validation every 250 updates. Fixed U0 training-derived composition offsets and normalization are used throughout.
-- The best validation checkpoint was update 2,000, with normalized loss 0.109830. Training and validation evaluation both exited successfully. The logged average training-loop time was about 0.44 s per update, including validation, excluding model loading.
+Before the first run, a budget of 171,520 was selected as a preliminary choice because the original protocol left it unspecified. Six group costs were used in this fixed order.
 
-Run `python selection.py` to reproduce the mask. The maximal-subset distribution is a specific choice and need not match a uniform draw over all feasible subsets. Future methods should share the same budget and predeclared protocol.
+| Group | Parameters |
+|---|---:|
+| R_early | 39,680 |
+| R_late | 39,680 |
+| S_early | 99,840 |
+| S_late | 99,840 |
+| A_early | 32,000 |
+| A_late | 32,000 |
 
-## Validation results
+The code enumerates combinations in the order above, first by subset size, then in `itertools.combinations` order. A candidate is included if its total cost is at most the budget and adding any omitted group would exceed the budget. These rules give 11 inclusion-maximal candidates. Each selection independently uses Python `random.Random(selection_seed).choice(candidates)`. This sampling is uniform over those 11 candidates, with replacement across seeds. The three resulting masks happen to be distinct. Seeds 42 and 43 were chosen after the first run and before either additional run started. Run `python selection_reproduce.py` to list all candidates, their costs, and the selected zero-based indices.
 
-Force MAEs use Cartesian components. Energy MAEs are in eV per configuration and force MAEs are in eV/Å. The same 100 configurations were used for checkpoint selection and reporting.
+| Selection seed | Candidate index | Selected groups | Parameters | Budget used |
+|---:|---:|---|---:|---:|
+| 41 | 6 | R_late, S_late, A_early | 171,520 | 100.0% |
+| 42 | 10 | R_early, R_late, A_early, A_late | 143,360 | 83.6% |
+| 43 | 0 | R_early, S_early, A_early | 171,520 | 100.0% |
 
-| Metric | U0 | Full LoRA | Random LoRA |
-|---|---:|---:|---:|
-| Raw energy MAE | 1.390870 | 1.464874 | 1.466617 |
-| Aligned energy MAE | 0.541098 | 0.249369 | 0.247749 |
-| H-force MAE | 0.032652 | 0.018114 | 0.022613 |
-| Cu-force MAE | 0.019783 | 0.006544 | 0.007135 |
+This distribution differs from uniform sampling over all feasible subsets. The unequal realized counts make comparisons subject to different parameter usage even though the budget ceiling is shared. The budget, distribution and validation protocol should be agreed and locked for future selector comparisons.
 
-Relative to U0, Random LoRA lowers aligned energy MAE by 54.2%, H-force MAE by 30.7%, and Cu-force MAE by 63.9%. Its raw energy MAE is 5.4% higher. Relative to Full LoRA, H and Cu force MAEs are 24.8% and 9.0% higher, respectively. Aligned energy MAE is numerically 0.65% lower, a small difference without an uncertainty estimate.
+## Training and validation
 
-One mask and one training seed do not establish the distribution of random-selection performance or the value of response-based selection. Results are on the validation set and do not establish test accuracy or diffusion performance. The 200-frame test set was not used.
+Each run uses rank 2, training seed 41, fresh adapters initialized from frozen U0, 500 training configurations, batch size 1, 2,000 updates, AdamW with learning rate 1e-4 and weight decay 1e-3, validation every 250 steps, and the same fixed U0 training-derived energy calibration and normalization. All three selected their best checkpoint at update 2,000. Normalized best validation losses were 0.109830, 0.097066 and 0.117349 for selection seeds 41, 42 and 43 respectively.
 
-## Files and reproduction
+| Validation metric | U0 | Full LoRA | Mask 41 | Mask 42 | Mask 43 |
+|---|---:|---:|---:|---:|---:|
+| Raw energy MAE, eV/config | 1.390870 | 1.464874 | 1.466617 | 1.468706 | 1.463369 |
+| Aligned energy MAE, eV/config | 0.541098 | 0.249369 | 0.247749 | 0.221025 | 0.260311 |
+| H-force component MAE, eV/Å | 0.032652 | 0.018114 | 0.022613 | 0.022174 | 0.022994 |
+| Cu-force component MAE, eV/Å | 0.019783 | 0.006544 | 0.007135 | 0.007618 | 0.006980 |
 
-- `analysis/` contains PNG plots, comparison metrics and `analyze.py`.
-- `training/` contains the Random LoRA configuration, scripts, model implementation, adapter checkpoints, resumable optimizer state, logs, and predictions.
-- `reference/` contains the validation predictions and metrics used for the U0 and Full LoRA comparison.
-- The original pretrained checkpoint and DFT dataset are external dependencies. The validation labels are not included in this package. Training scripts retain their original `/home/ubuntu/uma_cuh_baseline` paths. Their Python environment requires the project UMA/FAIRChem dependencies.
+The three-mask mean and sample standard deviation are 0.243028 ± 0.020064 eV/config for aligned energy, 0.022594 ± 0.000411 eV/Å for H force, and 0.007244 ± 0.000333 eV/Å for Cu force. These three observations describe mask-to-mask variation under one fixed training seed. They do not quantify variation over training seeds, independent datasets, or all possible adapter subsets. They are not confidence intervals.
 
-To regenerate the plots in an environment with NumPy, Matplotlib and ASE installed, provide the original validation data:
+All three masks improve the listed force MAEs and aligned energy MAE relative to U0, while their raw energy MAEs are higher. Their H and Cu force MAEs are all higher than Full LoRA's. Mask 42 has the best aligned energy MAE among these runs but uses fewer parameters, so its result alone does not identify why it performs differently.
 
-```bash
-python analysis/analyze.py --validation-data /path/to/structures.extxyz
-```
+The same 100 validation configurations were used for checkpoint selection and reporting. The original selector configuration proposes separate 50-frame selector-development and checkpoint-validation portions, which these runs did not implement. The 200-frame test set was not used. No force-response or gradient-based selectors have been evaluated here. Thus these results do not establish independent test performance or a complementarity advantage. The pretrained checkpoint copy has not had its full hash reverified.
 
-The plotting script verifies the source-index ordering of all three prediction files before computing force plots. Aligned-energy and aggregate MAE values come from the saved evaluation metrics, which use fixed U0 training-derived offsets.
+## Files and reproducibility
+
+- `selection_reproduce.py` reproduces the complete candidate list and all three selections.
+- `analysis/` contains individual-run plots, three-mask metrics and convergence plots, analysis code, and machine-readable results. Run `python analysis/analyze_repeats.py` to regenerate the three-mask plots from saved metrics and logs. `analysis/analyze.py` recreates the initial force plots and requires the original validation extxyz.
+- `training/` contains model implementation, training and evaluation scripts, configs, logs, predictions, best and final adapters, and optimizer resume states for all runs.
+- `reference/` contains saved U0 and Full LoRA predictions and validation results used for comparison.
+- The original pretrained model checkpoint and DFT dataset are external dependencies and are not included. Training scripts retain original `/home/ubuntu/uma_cuh_baseline` paths and require the project's UMA/FAIRChem environment.
+
+Source-index ordering, raw energy MAE, aligned energy MAE and H/Cu force MAEs were independently checked against original validation labels for each run. No test labels were inspected.
