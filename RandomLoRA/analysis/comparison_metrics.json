@@ -1,0 +1,20 @@
+{
+  "U0": {
+    "energy_raw_MAE_eV": 1.3908700647446293,
+    "energy_aligned_MAE_eV": 0.5410981672039665,
+    "H_force_component_MAE_eV_per_A": 0.03265178506743674,
+    "Cu_force_component_MAE_eV_per_A": 0.019782718582565854
+  },
+  "Full LoRA": {
+    "energy_raw_MAE_eV": 1.4648736392722608,
+    "energy_aligned_MAE_eV": 0.24936869628458652,
+    "H_force_component_MAE_eV_per_A": 0.01811402712748165,
+    "Cu_force_component_MAE_eV_per_A": 0.006544125992831409
+  },
+  "Random LoRA": {
+    "energy_raw_MAE_eV": 1.4666169207848037,
+    "energy_aligned_MAE_eV": 0.24774902660254894,
+    "H_force_component_MAE_eV_per_A": 0.02261282415298105,
+    "Cu_force_component_MAE_eV_per_A": 0.007134876288506677
+  }
+}

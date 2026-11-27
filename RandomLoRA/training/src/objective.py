@@ -1,0 +1,406 @@
+"""Training-only energy calibration and the shared objective (IDL Eq. 2).
+
+PSEUDOCODE: interfaces and steps only; bodies are not implemented yet.
+One definition of Eq. (2) is used everywhere: probe training, the selector's
+J(S), and final adapter training. Its torch and numpy forms must agree.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+ROW_E, ROW_F_H, ROW_F_CU = 0, 1, 2
+
+
+
+@dataclass
+class EnergyCalibration:
+    offsets: dict[tuple[int, int], float]
+    sigma_e: float
+    sigma_h: float
+    sigma_cu: float
+    provenance: dict
+
+    @classmethod
+    def fit(cls, train_frames, u0_energy, u0_forces, statistic="rms"):
+        import hashlib
+        import json
+        from .data import PREPARED_DIR, composition_key
+
+        if statistic not in ("rms", "std"):
+            raise ValueError("statistic must be rms or std")
+        if not train_frames:
+            raise ValueError("Empty training data")
+
+        manifest = json.loads(
+            (PREPARED_DIR / "manifest.json").read_text()
+        )
+        allowed = {
+            int(item["source_index"])
+            for item in manifest["structures"]
+            if item["split"] == "train"
+        }
+        ids = [int(a.info["source_index"]) for a in train_frames]
+
+        if len(set(ids)) != len(ids) or not set(ids) <= allowed:
+            raise ValueError("Non-training or duplicate frames")
+
+        e_pred = np.asarray(u0_energy, dtype=float)
+        f_pred = np.asarray(u0_forces, dtype=float)
+
+        e_dft = np.array([
+            a.get_potential_energy() for a in train_frames
+        ])
+        f_dft = np.concatenate([
+            a.get_forces(apply_constraint=False)
+            for a in train_frames
+        ])
+
+        numbers = np.concatenate([
+            a.numbers for a in train_frames
+        ])
+        if e_pred.shape != e_dft.shape or f_pred.shape != f_dft.shape:
+            raise ValueError("Prediction shape mismatch")
+        if not (np.isfinite(e_pred).all() and np.isfinite(f_pred).all()):
+            raise ValueError("Non-finite U0 predictions")
+
+        keys = [composition_key(a) for a in train_frames]
+        residual = e_pred - e_dft
+
+        offsets = {}
+        for key in set(keys):
+            mask = np.array([k == key for k in keys])
+            offsets[key] = float(residual[mask].mean())
+
+        aligned = residual - np.array([offsets[k] for k in keys])
+        force_res = f_pred - f_dft
+        h_res = force_res[numbers == 1].ravel()
+        cu_res = force_res[numbers == 29].ravel()
+
+        def scale(x):
+            if not len(x):
+                raise ValueError("Missing force species")
+            value = float(
+                np.sqrt(np.mean(x**2))
+                if statistic == "rms" else np.std(x)
+            )
+            if not np.isfinite(value) or value <= 0:
+                raise ValueError("Invalid scale")
+            return value
+
+        baseline_dir = PREPARED_DIR.parents[3] / "experiments/uma_cuh_baseline"
+        metrics = json.loads(
+            (baseline_dir / "reports/U0_val/metrics.json").read_text()
+        )
+        if metrics.get("label") != "U0":
+            raise ValueError("Expected U0 reference metrics")
+
+        provenance = {
+            "split": "train",
+            "n_frames": len(ids),
+            "statistic": statistic,
+            "train_sha256": manifest["file_sha256"]["train"],
+            "u0_checkpoint_sha256": metrics["checkpoint_sha256"],
+            "source_ids_sha256": hashlib.sha256(
+                np.asarray(ids, dtype=np.int64).tobytes()
+            ).hexdigest(),
+        }
+
+        return cls(
+            offsets, scale(aligned),
+            scale(h_res), scale(cu_res), provenance
+        )
+
+    def aligned_energy(self, energy, comp_keys):
+        energy = np.asarray(energy, dtype=float)
+        if energy.shape != (len(comp_keys),):
+            raise ValueError("Energy shape mismatch")
+        return energy - np.array([
+            self.offsets[k] for k in comp_keys
+        ])
+
+    def save(self, path):
+        import json
+        from pathlib import Path
+
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "offsets": {
+                f"{a},{b}": v
+                for (a, b), v in self.offsets.items()
+            },
+            "sigma_e": self.sigma_e,
+            "sigma_h": self.sigma_h,
+            "sigma_cu": self.sigma_cu,
+            "provenance": self.provenance,
+        }
+        with path.open("x") as f:
+            json.dump(payload, f, indent=2, sort_keys=True)
+
+    @classmethod
+    def load(cls, path):
+        import json
+        from pathlib import Path
+
+        data = json.loads(Path(path).read_text())
+        offsets = {
+            tuple(map(int, k.split(","))): float(v)
+            for k, v in data["offsets"].items()
+        }
+        return cls(
+            offsets,
+            float(data["sigma_e"]),
+            float(data["sigma_h"]),
+            float(data["sigma_cu"]),
+            data["provenance"],
+        )
+
+
+@dataclass
+class TargetStack:
+    """Energies and force components of a frame list stacked into one vector.
+
+    Per frame: [E, F_0x, F_0y, F_0z, F_1x, ...]; a Cu54H2 frame gives
+    1 + 56*3 = 169 rows and a Cu54 frame 163 rows. The row metadata keeps
+    DFT labels, U0 predictions and every probe response aligned.
+    """
+
+    values: np.ndarray        # (M,)
+    frame: np.ndarray         # (M,) position of the row's frame in the frame list
+    row_type: np.ndarray      # (M,) ROW_E / ROW_F_H / ROW_F_CU
+    atom: np.ndarray          # (M,) atom index, -1 for energy rows
+    source_index: np.ndarray  # (n_frames,) join key back to the dataset
+
+    @classmethod
+    def from_labels(cls, frames) -> TargetStack:
+        # E from atoms.get_potential_energy(); F from atoms.get_forces(apply_constraint=False)
+        # for each frame: append the energy row, then x, y, z of every atom
+        #     tagged ROW_F_H or ROW_F_CU by atomic number
+        raise NotImplementedError
+
+    @classmethod
+    def from_predictions(cls, frames, energy, forces, calibration: EnergyCalibration) -> TargetStack:
+        # energy: (n_frames,); forces: (n_atoms_total, 3) concatenated in frame order
+        #     (the layout of evaluate.py's *_predictions.npz)
+        # energy rows use calibration.aligned_energy; force rows are unchanged
+        raise NotImplementedError
+
+    def assert_aligned(self, other: TargetStack) -> None:
+        # identical source_index order, row_type and atom arrays
+        raise NotImplementedError
+
+    def __sub__(self, other: TargetStack) -> TargetStack:
+        # assert_aligned(other); return a copy with values = self.values - other.values
+        raise NotImplementedError
+
+
+
+class SpeciesBalancedObjective:
+    """Normalized energy/force MSE for batches of ASE Atoms."""
+
+    def __init__(self, calibration, weights=(0.10, 0.45, 0.45),
+                 no_h_policy="renormalize"):
+        self.calibration = calibration
+        self.weights = tuple(float(w) for w in weights)
+
+        if len(self.weights) != 3 or any(w < 0 for w in self.weights):
+            raise ValueError("Expected three nonnegative weights")
+        if not np.isclose(sum(self.weights), 1.0):
+            raise ValueError("Weights must sum to one")
+        if no_h_policy not in ("renormalize", "skip_term", "population_unbiased"):
+            raise ValueError("Invalid no-H policy")
+
+        self.no_h_policy = no_h_policy
+        self.training_h_fraction = None
+
+        if no_h_policy == "population_unbiased":
+            import json
+            from .data import PREPARED_DIR
+
+            manifest = json.loads(
+                (PREPARED_DIR / "manifest.json").read_text()
+            )
+            rows = [
+                item for item in manifest["structures"]
+                if item["split"] == "train"
+            ]
+            n_h = sum(
+                item["formula"] == "H2Cu54"
+                for item in rows
+            )
+            if not rows or not n_h:
+                raise ValueError("Missing H training frames")
+            self.training_h_fraction = n_h / len(rows)
+
+        if min(calibration.sigma_e, calibration.sigma_h,
+               calibration.sigma_cu) <= 0:
+            raise ValueError("Invalid normalization scales")
+
+    def _weights(self, has_h):
+        we, wh, wcu = self.weights
+
+        if not has_h:
+            wh = 0.0
+            if self.no_h_policy == "renormalize":
+                z = we + wcu
+                if z <= 0:
+                    raise ValueError("Invalid non-H weights")
+                we, wcu = we / z, wcu / z
+
+        return we, wh, wcu
+
+    def row_weights(self, stack):
+        """Weights for the future NumPy selection objective."""
+        types = np.asarray(stack.row_type)
+        counts = [
+            int(np.count_nonzero(types == t))
+            for t in (ROW_E, ROW_F_H, ROW_F_CU)
+        ]
+
+        if counts[0] == 0 or counts[2] == 0:
+            raise ValueError("Missing energy or Cu rows")
+        if np.any(~np.isin(types, (ROW_E, ROW_F_H, ROW_F_CU))):
+            raise ValueError("Unknown row type")
+
+        if self.no_h_policy == "population_unbiased":
+            h_frames = len(np.unique(
+                stack.frame[types == ROW_F_H]
+            ))
+            batch_fraction = h_frames / len(stack.source_index)
+            weights = (
+                self.weights[0],
+                self.weights[1] * batch_fraction
+                / self.training_h_fraction,
+                self.weights[2],
+            )
+        else:
+            weights = self._weights(counts[1] > 0)
+        scales = (
+            self.calibration.sigma_e,
+            self.calibration.sigma_h,
+            self.calibration.sigma_cu,
+        )
+
+        out = np.zeros(len(types), dtype=float)
+
+        for t, count in enumerate(counts):
+            if count:
+                out[types == t] = np.sqrt(
+                    weights[t] / (count * scales[t] ** 2)
+                )
+
+        return out
+
+    def numpy_value(self, residual):
+        d = self.row_weights(residual)
+        return float(np.sum((d * residual.values) ** 2))
+
+    def _components(self, energy, forces, batch):
+        import torch
+        from .data import composition_key
+
+        if not torch.is_tensor(energy) or not torch.is_tensor(forces):
+            raise TypeError("Predictions must be torch tensors")
+        if not isinstance(batch, (list, tuple)) or not batch:
+            raise ValueError("Expected a nonempty list of ASE Atoms")
+
+        n_atoms = sum(len(a) for a in batch)
+
+        if energy.shape != (len(batch),):
+            raise ValueError("Incorrect energy shape")
+        if forces.shape != (n_atoms, 3):
+            raise ValueError("Incorrect forces shape")
+        if energy.device != forces.device:
+            raise ValueError("Device mismatch")
+
+        dft_e = torch.as_tensor(
+            [a.get_potential_energy() for a in batch],
+            device=energy.device,
+            dtype=energy.dtype,
+        )
+
+        dft_f = torch.as_tensor(
+            np.concatenate([
+                a.get_forces(apply_constraint=False) for a in batch
+            ]),
+            device=forces.device,
+            dtype=forces.dtype,
+        )
+
+        species = torch.as_tensor(
+            np.concatenate([a.numbers for a in batch]),
+            device=forces.device,
+        )
+
+        offsets = torch.as_tensor(
+            [
+                self.calibration.offsets[composition_key(a)]
+                for a in batch
+            ],
+            device=energy.device,
+            dtype=energy.dtype,
+        )
+
+        energy_res = (
+            energy - offsets - dft_e
+        ) / self.calibration.sigma_e
+
+        force_res = forces - dft_f
+
+        h_mask = species == 1
+        cu_mask = species == 29
+
+        if not bool(torch.all(h_mask | cu_mask)):
+            raise ValueError("Unexpected chemical element")
+        if not bool(torch.any(cu_mask)):
+            raise ValueError("No Cu atoms")
+
+        le = energy_res.square().mean()
+
+        if bool(torch.any(h_mask)):
+            lh = (
+                force_res[h_mask] / self.calibration.sigma_h
+            ).square().mean()
+        else:
+            lh = le.new_zeros(())
+
+        lcu = (
+            force_res[cu_mask] / self.calibration.sigma_cu
+        ).square().mean()
+
+        if self.no_h_policy == "population_unbiased":
+            h_frames = sum(
+                composition_key(a)[1] > 0 for a in batch
+            )
+            batch_fraction = h_frames / len(batch)
+            weights = (
+                self.weights[0],
+                self.weights[1] * batch_fraction
+                / self.training_h_fraction,
+                self.weights[2],
+            )
+        else:
+            weights = self._weights(bool(torch.any(h_mask)))
+
+        return le, lh, lcu, weights
+
+    def torch_loss(self, energy, forces, batch):
+        le, lh, lcu, (we, wh, wcu) = self._components(
+            energy, forces, batch
+        )
+        return we * le + wh * lh + wcu * lcu
+
+    def parts(self, energy, forces, batch):
+        le, lh, lcu, (we, wh, wcu) = self._components(
+            energy, forces, batch
+        )
+        total = we * le + wh * lh + wcu * lcu
+
+        return {
+            "L_E": float(le.detach()),
+            "L_F_H": float(lh.detach()),
+            "L_F_Cu": float(lcu.detach()),
+            "total": float(total.detach()),
+        }

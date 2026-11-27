@@ -1,0 +1,39 @@
+experiment: Random mask 42 budget=171520
+
+model:
+  name: uma-m-1p1
+  task: oc20
+  inference_settings: traineval
+  freeze_backbone: true
+  freeze_heads: true
+  freeze_routing: true
+
+adapters:
+  config_file: configs/adapter_selection.yaml
+  active_groups:
+    - R_early
+    - R_late
+    - A_early
+    - A_late
+
+data:
+  train_split: train
+  validation_split: val
+  test_locked: true
+
+objective:
+  w_energy: 0.10
+  w_force_h: 0.45
+  w_force_cu: 0.45
+  scale_statistic: rms
+  no_h_policy: population_unbiased
+  calibration_file: runs/lall/calibration.json
+
+training:
+  optimizer: AdamW
+  learning_rate: 0.0001
+  weight_decay: 0.001
+  batch_size: 1
+  max_updates: 2000
+  seed: 41
+  precision: float32

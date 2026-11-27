@@ -1,0 +1,19 @@
+# Model weights and large data: never commit
+*.pt
+*.pth
+*.ckpt
+*.parquet
+*.lmdb
+
+# Local data and run outputs at the repository root
+/data/
+/outputs/
+/runs/
+
+.venv/
+.env
+.env.*
+
+__pycache__/
+.pytest_cache/
+.DS_Store
