@@ -1,0 +1,17 @@
+{
+  "offsets": {
+    "54,0": -0.14283199474562358,
+    "54,2": -2.4636511054404675
+  },
+  "provenance": {
+    "n_frames": 500,
+    "source_ids_sha256": "0e66456261b312f374bc7fe703431ca0580685fcacdc6ca0540ecb6fa955de1c",
+    "split": "train",
+    "statistic": "rms",
+    "train_sha256": "407be807b64ffc8c35d9324c12f0130c6e68e782a63f242c68347cdb3b32abc3",
+    "u0_checkpoint_sha256": "c30034edbf2e127f703f814cacb632661767da99b3e71c5b2ee5290510a52d68"
+  },
+  "sigma_cu": 0.044581473058329005,
+  "sigma_e": 0.29474771331486815,
+  "sigma_h": 0.17633636435856098
+}

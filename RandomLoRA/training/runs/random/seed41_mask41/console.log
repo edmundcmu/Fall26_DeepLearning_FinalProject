@@ -1,0 +1,99 @@
+Data: train=500, val=100
+Loading UMA and selected LoRA groups...
+WARNING:root:If 'dataset_list' is provided in the config, the code assumes that each dataset maps to itself. Please use 'dataset_mapping' as 'dataset_list' is deprecated and will be removed in the future.
+Trainable parameters: 171,520
+Training started.
+/home/ubuntu/miniconda3/envs/uma/lib/python3.12/site-packages/fairchem/core/models/uma/escn_moe.py:201: UserWarning: var(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/ReduceOps.cpp:1861.)
+  for x in self.global_mole_tensors.expert_mixing_coefficients.var(
+Update 25/2000 | Loss 0.599714 | 3.23 s/update | ETA 1.77 h
+Update 50/2000 | Loss 118.142392 | 1.79 s/update | ETA 0.97 h
+Update 75/2000 | Loss 0.435180 | 1.31 s/update | ETA 0.70 h
+Update 100/2000 | Loss 0.606342 | 1.07 s/update | ETA 0.56 h
+Update 125/2000 | Loss 0.269034 | 0.93 s/update | ETA 0.48 h
+Update 150/2000 | Loss 0.420414 | 0.83 s/update | ETA 0.43 h
+Update 175/2000 | Loss 0.228600 | 0.76 s/update | ETA 0.39 h
+Update 200/2000 | Loss 0.207585 | 0.71 s/update | ETA 0.36 h
+Update 225/2000 | Loss 0.119537 | 0.67 s/update | ETA 0.33 h
+Validation at 250: loss=0.308197, best=0.308197
+Update 250/2000 | Loss 0.103176 | 0.69 s/update | ETA 0.34 h
+Update 275/2000 | Loss 0.313684 | 0.66 s/update | ETA 0.32 h
+Update 300/2000 | Loss 0.146477 | 0.64 s/update | ETA 0.30 h
+Update 325/2000 | Loss 0.049492 | 0.61 s/update | ETA 0.29 h
+Update 350/2000 | Loss 0.051415 | 0.60 s/update | ETA 0.27 h
+Update 375/2000 | Loss 0.064245 | 0.58 s/update | ETA 0.26 h
+Update 400/2000 | Loss 0.086413 | 0.56 s/update | ETA 0.25 h
+Update 425/2000 | Loss 0.127375 | 0.55 s/update | ETA 0.24 h
+Update 450/2000 | Loss 0.107803 | 0.54 s/update | ETA 0.23 h
+Update 475/2000 | Loss 0.157265 | 0.53 s/update | ETA 0.23 h
+Validation at 500: loss=0.201260, best=0.201260
+Update 500/2000 | Loss 0.032907 | 0.55 s/update | ETA 0.23 h
+/home/ubuntu/miniconda3/envs/uma/lib/python3.12/site-packages/fairchem/core/models/uma/escn_moe.py:201: UserWarning: var(): degrees of freedom is <= 0. Correction should be strictly less than the reduction factor (input numel divided by output numel). (Triggered internally at /__w/pytorch/pytorch/aten/src/ATen/native/ReduceOps.cpp:1861.)
+  for x in self.global_mole_tensors.expert_mixing_coefficients.var(
+Update 525/2000 | Loss 0.034582 | 0.54 s/update | ETA 0.22 h
+Update 550/2000 | Loss 0.024170 | 0.53 s/update | ETA 0.21 h
+Update 575/2000 | Loss 0.036210 | 0.52 s/update | ETA 0.21 h
+Update 600/2000 | Loss 0.025557 | 0.52 s/update | ETA 0.20 h
+Update 625/2000 | Loss 0.042015 | 0.51 s/update | ETA 0.19 h
+Update 650/2000 | Loss 0.096189 | 0.50 s/update | ETA 0.19 h
+Update 675/2000 | Loss 0.018737 | 0.50 s/update | ETA 0.18 h
+Update 700/2000 | Loss 0.197386 | 0.49 s/update | ETA 0.18 h
+Update 725/2000 | Loss 0.029235 | 0.49 s/update | ETA 0.17 h
+Validation at 750: loss=0.133463, best=0.133463
+Update 750/2000 | Loss 0.048883 | 0.50 s/update | ETA 0.17 h
+Update 775/2000 | Loss 0.051614 | 0.50 s/update | ETA 0.17 h
+Update 800/2000 | Loss 0.047598 | 0.49 s/update | ETA 0.16 h
+Update 825/2000 | Loss 0.018083 | 0.49 s/update | ETA 0.16 h
+Update 850/2000 | Loss 0.034374 | 0.48 s/update | ETA 0.15 h
+Update 875/2000 | Loss 0.027146 | 0.48 s/update | ETA 0.15 h
+Update 900/2000 | Loss 0.029677 | 0.48 s/update | ETA 0.15 h
+Update 925/2000 | Loss 0.098200 | 0.47 s/update | ETA 0.14 h
+Update 950/2000 | Loss 0.021071 | 0.47 s/update | ETA 0.14 h
+Update 975/2000 | Loss 0.023186 | 0.47 s/update | ETA 0.13 h
+Validation at 1000: loss=0.137386, best=0.133463
+Update 1000/2000 | Loss 0.008799 | 0.48 s/update | ETA 0.13 h
+Update 1025/2000 | Loss 0.020265 | 0.48 s/update | ETA 0.13 h
+Update 1050/2000 | Loss 0.013783 | 0.47 s/update | ETA 0.12 h
+Update 1075/2000 | Loss 0.010210 | 0.47 s/update | ETA 0.12 h
+Update 1100/2000 | Loss 0.110708 | 0.47 s/update | ETA 0.12 h
+Update 1125/2000 | Loss 0.016853 | 0.46 s/update | ETA 0.11 h
+Update 1150/2000 | Loss 0.124207 | 0.46 s/update | ETA 0.11 h
+Update 1175/2000 | Loss 0.051864 | 0.46 s/update | ETA 0.11 h
+Update 1200/2000 | Loss 0.016742 | 0.46 s/update | ETA 0.10 h
+Update 1225/2000 | Loss 0.029933 | 0.46 s/update | ETA 0.10 h
+Validation at 1250: loss=0.128088, best=0.128088
+Update 1250/2000 | Loss 0.019246 | 0.46 s/update | ETA 0.10 h
+Update 1275/2000 | Loss 0.012582 | 0.46 s/update | ETA 0.09 h
+Update 1300/2000 | Loss 0.023039 | 0.46 s/update | ETA 0.09 h
+Update 1325/2000 | Loss 0.019545 | 0.46 s/update | ETA 0.09 h
+Update 1350/2000 | Loss 0.011184 | 0.46 s/update | ETA 0.08 h
+Update 1375/2000 | Loss 0.127083 | 0.45 s/update | ETA 0.08 h
+Update 1400/2000 | Loss 0.010814 | 0.45 s/update | ETA 0.08 h
+Update 1425/2000 | Loss 1.484521 | 0.45 s/update | ETA 0.07 h
+Update 1450/2000 | Loss 0.099640 | 0.45 s/update | ETA 0.07 h
+Update 1475/2000 | Loss 0.727467 | 0.45 s/update | ETA 0.07 h
+Validation at 1500: loss=0.125103, best=0.125103
+Update 1500/2000 | Loss 0.026384 | 0.46 s/update | ETA 0.06 h
+Update 1525/2000 | Loss 0.008769 | 0.45 s/update | ETA 0.06 h
+Update 1550/2000 | Loss 0.018929 | 0.45 s/update | ETA 0.06 h
+Update 1575/2000 | Loss 0.040266 | 0.45 s/update | ETA 0.05 h
+Update 1600/2000 | Loss 0.014553 | 0.45 s/update | ETA 0.05 h
+Update 1625/2000 | Loss 0.012509 | 0.45 s/update | ETA 0.05 h
+Update 1650/2000 | Loss 0.025708 | 0.45 s/update | ETA 0.04 h
+Update 1675/2000 | Loss 0.011728 | 0.44 s/update | ETA 0.04 h
+Update 1700/2000 | Loss 0.011970 | 0.44 s/update | ETA 0.04 h
+Update 1725/2000 | Loss 0.016354 | 0.44 s/update | ETA 0.03 h
+Validation at 1750: loss=0.114355, best=0.114355
+Update 1750/2000 | Loss 0.003946 | 0.45 s/update | ETA 0.03 h
+Update 1775/2000 | Loss 0.013887 | 0.45 s/update | ETA 0.03 h
+Update 1800/2000 | Loss 0.015747 | 0.45 s/update | ETA 0.02 h
+Update 1825/2000 | Loss 0.004466 | 0.44 s/update | ETA 0.02 h
+Update 1850/2000 | Loss 0.009107 | 0.44 s/update | ETA 0.02 h
+Update 1875/2000 | Loss 0.035939 | 0.44 s/update | ETA 0.02 h
+Update 1900/2000 | Loss 0.004539 | 0.44 s/update | ETA 0.01 h
+Update 1925/2000 | Loss 0.024253 | 0.44 s/update | ETA 0.01 h
+Update 1950/2000 | Loss 0.078492 | 0.44 s/update | ETA 0.01 h
+Update 1975/2000 | Loss 0.041781 | 0.44 s/update | ETA 0.00 h
+Validation at 2000: loss=0.109830, best=0.109830
+Update 2000/2000 | Loss 0.019376 | 0.44 s/update | ETA 0.00 h
+RANDOM LORA TRAINING COMPLETE
+TRAIN_EXIT_CODE=0

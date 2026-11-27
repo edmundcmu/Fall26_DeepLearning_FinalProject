@@ -1,0 +1,17 @@
+{
+  "split": "val",
+  "n_frames": 100,
+  "energy_alignment": "fixed U0 train-fitted offsets",
+  "U0": {
+    "energy_raw_MAE_eV": 1.3908700647446293,
+    "energy_aligned_MAE_eV": 0.5410981672039665,
+    "H_force_component_MAE_eV_per_A": 0.03265178506743674,
+    "Cu_force_component_MAE_eV_per_A": 0.019782718582565854
+  },
+  "L_Random": {
+    "energy_raw_MAE_eV": 1.4666169207848037,
+    "energy_aligned_MAE_eV": 0.24774902660254894,
+    "H_force_component_MAE_eV_per_A": 0.02261282415298105,
+    "Cu_force_component_MAE_eV_per_A": 0.007134876288506677
+  }
+}
